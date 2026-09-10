@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Criar Conta - AuthSystem</title>
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body class="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
+    <header class="fixed top-0 start-0 z-20 w-full border-b border-gray-200 bg-white">
+      <nav class="mx-auto flex max-w-screen-xl items-center justify-between p-4">
+        <a href="./index.html" class="flex items-center space-x-2">
+          <span class="text-xl font-bold text-gray-900">AuthSystem</span>
+        </a>
+        <a href="./index.html" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition"> Voltar para o inicio </a>
+      </nav>
+    </header>
+    <div class="w-full max-w-md space-y-6 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+      <div class="text-center">
+        <h1 class="text-2xl font-bold text-gray-900">Criar uma conta</h1>
+        <p class="mt-2 text-sm text-gray-500">Preencha os dados abaixo para se cadastrar</p>
+      </div>
+
+      <form id="register-form" class="space-y-4">
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700">Nome completo</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            required
+            placeholder="Seu nome"
+            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700">E-mail</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            placeholder="seu@email.com"
+            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            placeholder="••••••••"
+            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+
+        <button type="submit" class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow hover:bg-blue-700 transition">Cadastrar</button>
+      </form>
+
+      <div class="text-center text-sm text-gray-500">
+        Já tem uma conta?
+        <a href="./login.html" class="font-medium text-blue-600 hover:underline"> Fazer login </a>
+      </div>
+    </div>
+    <script src="../scripts/app.js"></script>
+  </body>
+</html>
