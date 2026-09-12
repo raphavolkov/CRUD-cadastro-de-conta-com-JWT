@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - AuthSystem</title>
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body class="bg-gray-50 pt-20">
+    <header class="fixed top-0 start-0 z-20 w-full border-b border-gray-200 bg-white">
+      <nav class="mx-auto flex max-w-screen-xl items-center justify-between p-4">
+        <span class="text-xl font-bold text-gray-900">AuthSystem</span>
+
+        <div class="flex items-center space-x-4">
+          <span id="user-email" class="text-sm text-gray-600 font-medium">usuario@email.com</span>
+          <button id="logout-btn" class="rounded-lg bg-red-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600 transition">Sair</button>
+        </div>
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-4xl px-4 py-8">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Histórico de Acessos</h1>
+        <p class="text-sm text-gray-500">Registro de entradas e saídas no sistema</p>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <table class="w-full text-left text-sm text-gray-600">
+          <thead class="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-700">
+            <tr>
+              <th scope="col" class="px-6 py-3">Usuário</th>
+              <th scope="col" class="px-6 py-3">Data e Hora de Login</th>
+              <th scope="col" class="px-6 py-3">Data e Hora de Logout</th>
+            </tr>
+          </thead>
+          <tbody id="logs-table-body" class="divide-y divide-gray-200">
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 font-medium text-gray-900">usuario@email.com</td>
+              <td class="px-6 py-4">12/09/2026 às 10:30:15</td>
+              <td class="px-6 py-4 text-gray-400">Sessão ativa</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 font-medium text-gray-900">usuario@email.com</td>
+              <td class="px-6 py-4">11/09/2026 às 14:20:00</td>
+              <td class="px-6 py-4">11/09/2026 às 18:05:42</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <script src="../scripts/app.js"></script>
+  </body>
+</html>
