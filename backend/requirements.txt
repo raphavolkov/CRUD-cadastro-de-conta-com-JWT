@@ -6,3 +6,4 @@ email-validator
 python-jose[cryptography]
 pwdlib[argon2]
 python-dotenv
+slowapi

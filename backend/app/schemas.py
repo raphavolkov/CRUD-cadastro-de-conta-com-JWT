@@ -39,3 +39,11 @@ class AccessLogResponse(BaseModel):
     logout_at: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class AccessLogPaginationResponse(BaseModel):
+    items: list[AccessLogResponse]
+    page: int
+    limit: int
+    total: int
+    pages: int

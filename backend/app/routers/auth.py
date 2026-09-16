@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import datetime
 
+from ..limiter import limiter
 from ..database import get_db
 from ..models import User, AccessLog
 from ..schemas import (
@@ -11,6 +12,7 @@ from ..schemas import (
     Token,
     MessageResponse,
     AccessLogResponse,
+    AccessLogPaginationResponse,
 )
 from ..security import (
     create_access_token,
@@ -25,7 +27,8 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user_data.email).first()
 
     if existing_user:
@@ -47,7 +50,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(user_data: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_data.email).first()
 
     if not user:
@@ -58,6 +62,17 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
     if not verify_password(user_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou senha inválidos"
+        )
+
+    active_session = (
+        db.query(AccessLog)
+        .filter(AccessLog.user_id == user.id, AccessLog.logout_at.is_(None))
+        .first()
+    )
+
+    if active_session:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Essa conta já está conectada"
         )
 
     access_token = create_access_token(data={"sub": user.id})
@@ -84,35 +99,61 @@ def get_me(user_id: str = Depends(get_current_user_id), db: Session = Depends(ge
 
 @router.post("/logout", response_model=MessageResponse)
 def logout(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    access_log = (
+    active_sessions = (
         db.query(AccessLog)
         .filter(AccessLog.user_id == user_id, AccessLog.logout_at.is_(None))
-        .order_by(AccessLog.login_at.desc())
-        .first()
+        .all()
     )
 
-    if not access_log:
+    if not active_sessions:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Nenhuma sessão ativa encontrada",
         )
 
-    access_log.logout_at = datetime.utcnow()
+    for access_log in active_sessions:
+        access_log.logout_at = datetime.utcnow()
 
     db.commit()
 
     return {"message": "Logout realizado com sucesso"}
 
 
-@router.get("/logs", response_model=list[AccessLogResponse])
+@router.get("/logs", response_model=AccessLogPaginationResponse)
 def get_access_logs(
-    user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
+    page: int = 1,
+    limit: int = 10,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
 ):
-    logs = (
-        db.query(User.name, User.email, AccessLog.login_at, AccessLog.logout_at)
-        .join(AccessLog, AccessLog.user_id == User.id)
-        .order_by(AccessLog.login_at.desc())
-        .all()
-    )
+    if page < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A página deve ser maior ou igual a 1.",
+        )
 
-    return logs
+    if limit < 1 or limit > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O limite deve estar entre 1 e 100.",
+        )
+
+    query = db.query(
+        User.name, User.email, AccessLog.login_at, AccessLog.logout_at
+    ).join(AccessLog, AccessLog.user_id == User.id)
+
+    total = query.count()
+
+    offset = (page - 1) * limit
+
+    logs = query.order_by(AccessLog.login_at.desc()).offset(offset).limit(limit).all()
+
+    total_pages = (total + limit - 1) // limit
+
+    return {
+        "items": logs,
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "pages": total_pages,
+    }
