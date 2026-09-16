@@ -26,3 +26,16 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
+class AccessLogResponse(BaseModel):
+    name: str
+    email: EmailStr
+    login_at: datetime
+    logout_at: datetime | None
+
+    model_config = {"from_attributes": True}
