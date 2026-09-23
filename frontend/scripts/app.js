@@ -182,23 +182,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const logoutDate = log.logout_at ? new Date(log.logout_at) : null;
 
-            row.innerHTML = `
-          <td class="px-6 py-4 font-medium text-gray-900">
-            <div>${log.name}</div>
+            const userCell = document.createElement("td");
+            userCell.className = "px-6 py-4 font-medium text-gray-900";
 
-            <div class="text-sm text-gray-500">
-              ${log.email}
-            </div>
-          </td>
+            const nameDiv = document.createElement("div");
+            nameDiv.textContent = log.name;
 
-          <td class="px-6 py-4">
-            ${loginDate.toLocaleString("pt-BR")}
-          </td>
+            const emailDiv = document.createElement("div");
+            emailDiv.className = "text-sm text-gray-500";
+            emailDiv.textContent = log.email;
 
-          <td class="px-6 py-4 ${logoutDate ? "" : "text-green-600"}">
-            ${logoutDate ? logoutDate.toLocaleString("pt-BR") : "Sessão ativa"}
-          </td>
-        `;
+            userCell.appendChild(nameDiv);
+            userCell.appendChild(emailDiv);
+
+            const loginCell = document.createElement("td");
+            loginCell.className = "px-6 py-4";
+            loginCell.textContent = loginDate.toLocaleString("pt-BR");
+
+            const logoutCell = document.createElement("td");
+            logoutCell.className = `px-6 py-4 ${logoutDate ? "" : "text-green-600"}`;
+            logoutCell.textContent = logoutDate ? logoutDate.toLocaleString("pt-BR") : "Sessão Ativa";
+
+            row.appendChild(userCell);
+            row.appendChild(loginCell);
+            row.appendChild(logoutCell);
 
             logsTableBody.appendChild(row);
           });
