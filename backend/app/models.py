@@ -21,4 +21,5 @@ class AccessLog(Base):
     session_id = Column(String(36), unique=True, nullable=False)
     user_id = Column(String(36), nullable=False)
     login_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
     logout_at = Column(DateTime, nullable=True)

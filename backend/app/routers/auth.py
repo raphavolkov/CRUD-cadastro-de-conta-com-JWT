@@ -1,7 +1,7 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ..limiter import limiter
 from ..database import get_db
@@ -16,6 +16,7 @@ from ..schemas import (
     AccessLogPaginationResponse,
 )
 from ..security import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
     get_current_session,
     get_current_user_id,
@@ -66,9 +67,23 @@ def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db))
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou senha inválidos"
         )
 
+    now = datetime.utcnow()
+
+    db.query(AccessLog).filter(
+        AccessLog.user_id == user.id,
+        AccessLog.logout_at.is_(None),
+        AccessLog.expires_at <= now,
+    ).update({AccessLog.logout_at: now}, synchronize_session=False)
+
+    db.commit()
+
     active_session = (
         db.query(AccessLog)
-        .filter(AccessLog.user_id == user.id, AccessLog.logout_at.is_(None))
+        .filter(
+            AccessLog.user_id == user.id,
+            AccessLog.logout_at.is_(None),
+            AccessLog.expires_at > now,
+        )
         .first()
     )
 
@@ -79,6 +94,8 @@ def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db))
 
     session_id = str(uuid.uuid4())
 
+    expires_at = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
     access_token = create_access_token(
         data={
             "sub": user.id,
@@ -87,9 +104,7 @@ def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db))
     )
 
     access_log = AccessLog(
-        id=session_id,
-        session_id=session_id,
-        user_id=user.id,
+        id=session_id, session_id=session_id, user_id=user.id, expires_at=expires_at
     )
 
     db.add(access_log)
