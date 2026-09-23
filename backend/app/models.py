@@ -18,6 +18,7 @@ class AccessLog(Base):
     __tablename__ = "access_logs"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String(36), unique=True, nullable=False)
     user_id = Column(String(36), nullable=False)
     login_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     logout_at = Column(DateTime, nullable=True)

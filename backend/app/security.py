@@ -7,6 +7,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pwdlib import PasswordHash
 
+from sqlalchemy.orm import Session
+from .database import get_db
+from .models import AccessLog
+
 load_dotenv()
 
 
@@ -46,31 +50,56 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> str:
+def decode_access_token(token: str) -> tuple[str, str]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
         user_id = payload.get("sub")
+        session_id = payload.get("session_id")
 
-        if user_id is None:
+        if user_id is None or session_id is None:
             raise JWTError
 
-        return user_id
+        return user_id, session_id
 
     except JWTError:
         raise ValueError("Token inválido ou expirado.")
 
 
-def get_current_user_id(
+def get_current_session(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> str:
+    db: Session = Depends(get_db),
+) -> tuple[str, str]:
     token = credentials.credentials
 
     try:
-        return decode_access_token(token)
+        user_id, session_id = decode_access_token(token)
+
+        active_session = (
+            db.query(AccessLog)
+            .filter(
+                AccessLog.session_id == session_id,
+                AccessLog.user_id == user_id,
+                AccessLog.logout_at.is_(None),
+            )
+            .first()
+        )
+
+        if not active_session:
+            raise ValueError("Sessão encerrada.")
+
+        return user_id, session_id
 
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido ou expirado.",
+            detail="Token inválido ou sessão encerrada.",
         )
+
+
+def get_current_user_id(
+    session: tuple[str, str] = Depends(get_current_session),
+) -> str:
+    user_id, _ = session
+
+    return user_id

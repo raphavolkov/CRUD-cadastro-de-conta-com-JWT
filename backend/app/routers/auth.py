@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -16,6 +17,7 @@ from ..schemas import (
 )
 from ..security import (
     create_access_token,
+    get_current_session,
     get_current_user_id,
     hash_password,
     verify_password,
@@ -75,9 +77,20 @@ def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db))
             status_code=status.HTTP_409_CONFLICT, detail="Essa conta já está conectada"
         )
 
-    access_token = create_access_token(data={"sub": user.id})
+    session_id = str(uuid.uuid4())
 
-    access_log = AccessLog(user_id=user.id)
+    access_token = create_access_token(
+        data={
+            "sub": user.id,
+            "session_id": session_id,
+        }
+    )
+
+    access_log = AccessLog(
+        id=session_id,
+        session_id=session_id,
+        user_id=user.id,
+    )
 
     db.add(access_log)
     db.commit()
@@ -98,21 +111,29 @@ def get_me(user_id: str = Depends(get_current_user_id), db: Session = Depends(ge
 
 
 @router.post("/logout", response_model=MessageResponse)
-def logout(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    active_sessions = (
+def logout(
+    session: tuple[str, str] = Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    user_id, session_id = session
+
+    access_log = (
         db.query(AccessLog)
-        .filter(AccessLog.user_id == user_id, AccessLog.logout_at.is_(None))
-        .all()
+        .filter(
+            AccessLog.session_id == session_id,
+            AccessLog.user_id == user_id,
+            AccessLog.logout_at.is_(None),
+        )
+        .first()
     )
 
-    if not active_sessions:
+    if not access_log:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Nenhuma sessão ativa encontrada",
         )
 
-    for access_log in active_sessions:
-        access_log.logout_at = datetime.utcnow()
+    access_log.logout_at = datetime.utcnow()
 
     db.commit()
 
