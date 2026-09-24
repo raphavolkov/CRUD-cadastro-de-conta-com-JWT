@@ -1,5 +1,6 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
@@ -108,7 +109,14 @@ def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db))
     )
 
     db.add(access_log)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Essa conta já está conectada",
+        )
 
     return {"access_token": access_token, "token_type": "bearer"}
 
