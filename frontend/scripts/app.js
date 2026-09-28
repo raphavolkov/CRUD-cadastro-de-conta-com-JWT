@@ -90,7 +90,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         if (!response.ok) {
-          alert(data.detail || "Email ou senha inválidos.");
+          if (Array.isArray(data.detail)) {
+            const mensagens = data.detail.map((item) => item.msg).join("\n");
+            alert(mensagens || "Dados invalidos");
+          } else {
+            alert(data.detail || "Email ou senha invalidos");
+          }
           return;
         }
 
