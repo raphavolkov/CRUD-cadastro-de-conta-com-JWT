@@ -183,9 +183,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             row.classList.add("hover:bg-gray-50");
 
-            const loginDate = new Date(log.login_at);
+            const loginDate = new Date(`${log.login_at}Z`);
 
-            const logoutDate = log.logout_at ? new Date(log.logout_at) : null;
+            const logoutDate = log.logout_at ? new Date(`${log.logout_at}Z`) : null;
 
             const userCell = document.createElement("td");
             userCell.className = "px-6 py-4 font-medium text-gray-900";
