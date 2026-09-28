@@ -9,8 +9,6 @@ from .routers import auth
 from . import models
 from .limiter import limiter
 
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI()
 
 app.state.limiter = limiter
