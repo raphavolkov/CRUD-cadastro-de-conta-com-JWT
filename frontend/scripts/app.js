@@ -4,6 +4,37 @@ document.addEventListener("DOMContentLoaded", async () => {
   const logoutButton = document.querySelector("#logout-btn");
   const logsTableBody = document.querySelector("#logs-table-body");
 
+  function showToast(message, type = "success") {
+    let container = document.querySelector("#toast-container");
+
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "toast-container";
+      container.className = "fixed top-4 right-4 z-50 flex flex-col gap-2";
+      document.body.appendChild(container);
+    }
+
+    const colors = {
+      success: "bg-green-600",
+      error: "bg-red-600",
+    };
+
+    const toast = document.createElement("div");
+
+    toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg whitespace-pre-line transition-opacity duration-300`;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add("opacity-0");
+
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }, 3000);
+  }
+
   if (registerForm) {
     registerForm.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -14,12 +45,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       const confirmPassword = document.getElementById("confirm-password").value;
 
       if (!name || !email || !password || !confirmPassword) {
-        alert("Preencha todos os campos.");
+        showToast("Preencha todos os campos.", "error");
         return;
       }
 
       if (password !== confirmPassword) {
-        alert("As senhas não coincidem.");
+        showToast("As senhas não coincidem.", "error");
         return;
       }
 
@@ -39,21 +70,31 @@ document.addEventListener("DOMContentLoaded", async () => {
         const data = await response.json();
 
         if (response.status === 429) {
-          alert("Muitas tentativas. aguarde um momento antes de tentar novamente");
+          showToast("Muitas tentativas. Aguarde um momento antes de tentar novamente.", "error");
           return;
         }
 
         if (!response.ok) {
-          alert(data.detail || "Erro ao cadastrar usuário.");
+          if (Array.isArray(data.detail)) {
+            const mensagens = data.detail.map((item) => item.msg).join("\n");
+
+            showToast(mensagens || "Dados inválidos.", "error");
+          } else {
+            showToast(data.detail || "Erro ao criar conta.", "error");
+          }
+
           return;
         }
 
-        alert("Cadastro realizado com sucesso!");
+        showToast("Cadastro realizado com sucesso!");
 
-        window.location.replace("http://127.0.0.1:5500/frontend/pages/login.html");
+        setTimeout(() => {
+          window.location.assign("http://127.0.0.1:5500/frontend/pages/login.html");
+        }, 2000);
       } catch (error) {
         console.error("Erro:", error);
-        alert("Não foi possível conectar com a API.");
+
+        showToast("Não foi possível conectar com a API.", "error");
       }
     });
   }
@@ -66,7 +107,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const password = document.querySelector("#password").value;
 
       if (!email || !password) {
-        alert("Preencha todos os campos.");
+        showToast("Preencha todos os campos.", "error");
         return;
       }
 
@@ -85,17 +126,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         const data = await response.json();
 
         if (response.status === 429) {
-          alert("Muitas tentativas. aguarde um momento antes de tentar novamente");
+          showToast("Muitas tentativas. Aguarde um momento antes de tentar novamente.", "error");
           return;
         }
 
         if (!response.ok) {
           if (Array.isArray(data.detail)) {
             const mensagens = data.detail.map((item) => item.msg).join("\n");
-            alert(mensagens || "Dados invalidos");
+
+            showToast(mensagens || "Dados inválidos.", "error");
           } else {
-            alert(data.detail || "Email ou senha invalidos");
+            showToast(data.detail || "Email ou senha inválidos.", "error");
           }
+
           return;
         }
 
@@ -106,7 +149,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         window.location.replace("http://127.0.0.1:5500/frontend/pages/dashboard.html");
       } catch (error) {
         console.error("Erro:", error);
-        alert("Não foi possível conectar com a API.");
+
+        showToast("Não foi possível conectar com a API.", "error");
       }
     });
   }
@@ -137,11 +181,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.detail || "Sessão inválida.");
+        showToast(data.detail || "Sessão inválida.", "error");
 
         localStorage.removeItem("token");
 
-        window.location.href = "./login.html";
+        setTimeout(() => {
+          window.location.replace("http://127.0.0.1:5500/frontend/pages/login.html");
+        }, 1500);
+
         return;
       }
 
@@ -165,12 +212,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           const logs = await logsResponse.json();
 
           if (logsResponse.status === 429) {
-            alert("Muitas tentativas. aguarde um momento antes de tentar novamente");
+            showToast("Muitas tentativas. Aguarde um momento antes de tentar novamente.", "error");
             return;
           }
 
           if (!logsResponse.ok) {
-            alert(logs.detail || "Erro ao carregar histórico.");
+            showToast(logs.detail || "Erro ao carregar histórico.", "error");
             return;
           }
 
@@ -206,6 +253,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const logoutCell = document.createElement("td");
             logoutCell.className = `px-6 py-4 ${logoutDate ? "" : "text-green-600"}`;
+
             logoutCell.textContent = logoutDate ? logoutDate.toLocaleString("pt-BR") : "Sessão Ativa";
 
             row.appendChild(userCell);
@@ -220,12 +268,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           paginationInfo.textContent = `Página ${logs.page} de ${logs.pages}`;
 
           prevPageButton.disabled = logs.page <= 1;
-
           nextPageButton.disabled = logs.page >= logs.pages;
         } catch (error) {
           console.error("Erro:", error);
 
-          alert("Não foi possível conectar com a API.");
+          showToast("Não foi possível conectar com a API.", "error");
         }
       }
 
@@ -243,7 +290,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (error) {
       console.error("Erro:", error);
 
-      alert("Não foi possível conectar com a API.");
+      showToast("Não foi possível conectar com a API.", "error");
     }
   }
 
@@ -268,19 +315,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (!response.ok) {
           console.error("Erro ao fazer logout:", data);
-          alert(data.detail || "Erro ao sair da conta.");
+
+          showToast(data.detail || "Erro ao sair da conta.", "error");
+
           return;
         }
 
         localStorage.removeItem("token");
         localStorage.removeItem("loggedUser");
 
-        alert("Você saiu da conta.");
+        showToast("Você saiu da conta.");
 
-        window.location.replace("http://127.0.0.1:5500/frontend/pages/login.html");
+        setTimeout(() => {
+          window.location.replace("http://127.0.0.1:5500/frontend/pages/login.html");
+        }, 1500);
       } catch (error) {
         console.error("Erro:", error);
-        alert("Não foi possível conectar com a API.");
+
+        showToast("Não foi possível conectar com a API.", "error");
       }
     });
   }
