@@ -3,7 +3,7 @@ import pytest
 
 from datetime import datetime
 from app.models import User
-from app.schemas import UserCreate, UserLogin, UserResponse, Token
+from app.schemas import UserCreate, UserLogin, UserResponse, Token, MessageResponse
 
 
 def test_user_create_valido():
@@ -114,3 +114,14 @@ def test_token_access_token_ausente():
 def test_token_token_type_ausente():
     with pytest.raises(ValueError):
         Token(access_token="meu-token-123")
+
+
+def test_message_response_valido():
+    resposta = MessageResponse(message="Usuario criado com sucesso")
+
+    assert resposta.message == "Usuario criado com sucesso"
+
+
+def test_message_response_messagem_ausente():
+    with pytest.raises(ValueError):
+        MessageResponse()
