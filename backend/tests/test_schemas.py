@@ -1,6 +1,9 @@
 import pytest
 
-from app.schemas import UserCreate, UserLogin
+
+from datetime import datetime
+from app.models import User
+from app.schemas import UserCreate, UserLogin, UserResponse
 
 
 def test_user_create_valido():
@@ -51,3 +54,43 @@ def test_user_login_email_ausente():
 def test_user_login_senha_ausente():
     with pytest.raises(ValueError):
         UserLogin(email="raphael@email.com")
+
+
+def test_user_response_valido():
+    usuario = User(
+        id="123",
+        name="Raphael",
+        email="raphael@teste.com",
+        password_hash="hash-da-senha",
+        created_at=datetime(2026, 10, 8, 10, 30),
+    )
+
+    resposta = UserResponse.model_validate(usuario)
+
+    assert resposta.id == "123"
+    assert resposta.name == "Raphael"
+    assert resposta.email == "raphael@teste.com"
+    assert resposta.created_at == datetime(2026, 10, 8, 10, 30)
+
+
+def test_user_response_nao_expoe_senha():
+    usuario = User(
+        id="123",
+        name="Raphael",
+        email="raphael@teste.com",
+        password_hash="senha-super-secreta",
+        created_at=datetime(2026, 10, 8, 10, 30),
+    )
+
+    resposta = UserResponse.model_validate(usuario)
+
+    assert not hasattr(resposta, "password_hash")
+
+
+def test_user_response_email_ausente():
+    with pytest.raises(ValueError):
+        UserResponse(
+            id="123",
+            name="Raphael",
+            created_at=datetime(2026, 10, 8, 10, 30),
+        )
