@@ -3,7 +3,7 @@ import pytest
 
 from datetime import datetime
 from app.models import User
-from app.schemas import UserCreate, UserLogin, UserResponse
+from app.schemas import UserCreate, UserLogin, UserResponse, Token
 
 
 def test_user_create_valido():
@@ -94,3 +94,23 @@ def test_user_response_email_ausente():
             name="Raphael",
             created_at=datetime(2026, 10, 8, 10, 30),
         )
+
+
+def test_token_valido():
+    token = Token(
+        access_token="meu-token-123",
+        token_type="bearer",
+    )
+
+    assert token.access_token == "meu-token-123"
+    assert token.token_type == "bearer"
+
+
+def test_token_access_token_ausente():
+    with pytest.raises(ValueError):
+        Token(token_type="bearer")
+
+
+def test_token_token_type_ausente():
+    with pytest.raises(ValueError):
+        Token(access_token="meu-token-123")
