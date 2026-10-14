@@ -1,7 +1,6 @@
 import pytest
-
-
 from datetime import datetime
+
 from app.models import User
 from app.schemas import (
     UserCreate,
@@ -130,7 +129,7 @@ def test_message_response_valido():
     assert resposta.message == "Usuario criado com sucesso"
 
 
-def test_message_response_messagem_ausente():
+def test_message_response_mensagem_ausente():
     with pytest.raises(ValueError):
         MessageResponse()
 
@@ -149,7 +148,7 @@ def test_access_log_response_valido():
     assert resposta.logout_at == datetime(2026, 10, 8, 11, 30)
 
 
-def test_access_log_respose_valido_sem_logout():
+def test_access_log_response_valido_sem_logout():
     resposta = AccessLogResponse(
         name="Raphael",
         email="raphael@email.com",
