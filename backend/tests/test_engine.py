@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from app import models
+from app import models, database
+from unittest.mock import MagicMock
 
 
 def test_database_session(db: Session):
@@ -37,3 +38,34 @@ def test_buscar_usuario(db: Session):
 
     email_encontrado: str = user_email.email
     assert email_encontrado == "maria@teste.com"
+
+
+def test_get_db_retorna_sessao(monkeypatch):
+    sessao_falsa = MagicMock()
+
+    monkeypatch.setattr(database, "SessionLocal", lambda: sessao_falsa)
+
+    gerador = database.get_db()
+    sessao_recebida = next(gerador)
+
+    assert sessao_recebida is sessao_falsa
+
+    gerador.close()
+
+    sessao_falsa.close.assert_called_once()
+
+
+def test_get_db_fecha_sessao_apos_excecao(monkeypatch):
+    sessao_falsa = MagicMock()
+
+    monkeypatch.setattr(database, "SessionLocal", lambda: sessao_falsa)
+
+    gerador = database.get_db()
+    next(gerador)
+
+    try:
+        gerador.throw(ValueError("Erro Simulado"))
+    except ValueError:
+        pass
+
+    sessao_falsa.close.asset_called_once()
