@@ -1,3 +1,10 @@
+from unittest.mock import patch
+from sqlalchemy.exc import IntegrityError
+from app.models import User
+from app.main import app
+from app.security import get_current_session
+
+
 def test_rota_raiz(client):
     response = client.get("/")
 
@@ -196,11 +203,11 @@ def test_login_com_sessao_ativa(client):
         "password": dados_usuario["password"],
     }
 
-    primeiro_login = client.post("/api/auth/login", json=dados_usuario)
+    primeiro_login = client.post("/api/auth/login", json=dados_login)
 
     assert primeiro_login.status_code == 200
 
-    segundo_login = client.post("/api/auth/login", json=dados_usuario)
+    segundo_login = client.post("/api/auth/login", json=dados_login)
 
     assert segundo_login.status_code == 409
     assert segundo_login.json()["detail"] == ("Essa conta já está conectada")
@@ -255,6 +262,31 @@ def test_login_sem_email(client):
     assert response.status_code == 422
 
 
+def test_login_com_erro_ao_salvar_sessao(client):
+    payload = {
+        "name": "Raphael",
+        "email": "raphael@email.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+
+    assert cadastro.status_code == 201
+
+    dados_login = {"email": payload["email"], "password": payload["password"]}
+
+    with patch("app.routers.auth.Session.commit") as mock_commit:
+        mock_commit.side_effect = [
+            None,
+            IntegrityError("INSERT", {}, Exception("Erro Simulado")),
+        ]
+
+        response = client.post("/api/auth/login", json=dados_login)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Essa conta já está conectada"
+
+
 def test_logout_sucesso(client):
     payload = {
         "name": "Teste",
@@ -298,6 +330,21 @@ def test_logout_com_token_malformado(client):
     )
 
     assert response.status_code == 401
+
+
+def test_logout_sem_sessao_ativa(client):
+    def override_get_current_session():
+        return ("usuario-inexistente", "sessao-inexistente")
+
+    app.dependency_overrides[get_current_session] = override_get_current_session
+
+    try:
+        response = client.post("/api/auth/logout")
+    finally:
+        app.dependency_overrides.pop(get_current_session, None)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Nenhuma sessão ativa encontrada"
 
 
 def test_token_invalido_apos_logout(client):
@@ -401,6 +448,36 @@ def test_buscar_proprio_usuario_apos_logout(client):
     response = client.get("/api/auth/me", headers=headers)
 
     assert response.status_code == 401
+
+
+def test_buscar_proprio_usuario_nao_encontrado(client, db):
+    payload = {
+        "name": "Raphael",
+        "email": "raphael@teste.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    dados_login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert dados_login.status_code == 200
+
+    token = dados_login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    usuario = db.query(User).filter(User.email == payload["email"]).first()
+
+    db.delete(usuario)
+    db.commit()
+
+    response = client.get("/api/auth/me", headers=headers)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Usuário não encontrado."
 
 
 def test_buscar_logs_sem_token(client):
