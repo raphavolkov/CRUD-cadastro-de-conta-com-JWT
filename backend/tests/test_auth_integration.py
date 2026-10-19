@@ -448,6 +448,72 @@ def test_buscar_logs_com_pagina_invalida(client):
     assert response.json()["detail"] == "A página deve ser maior ou igual a 1."
 
 
+def test_buscar_logs_com_limite_minimo(client):
+    payload = {
+        "name": "Teste Limite Minimo",
+        "email": "limite.minimo@teste.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": payload["email"],
+            "password": payload["password"],
+        },
+    )
+    assert login.status_code == 200
+
+    token = login.json()["access_token"]
+
+    response = client.get(
+        "/api/auth/logs?limit=1",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["limit"] == 1
+    assert len(data["items"]) <= 1
+    assert data["total"] >= 1
+
+
+def test_buscar_logs_com_limite_maximo(client):
+    payload = {
+        "name": "Teste Limite Maximo",
+        "email": "testelimitemaximo@teste.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": payload["email"],
+            "password": payload["password"],
+        },
+    )
+    assert login.status_code == 200
+
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/auth/logs?limit=100", headers=headers)
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["limit"] == 100
+    assert len(data["items"]) <= 100
+
+
 def test_buscar_logs_com_limite_invalido(client):
     payload = {
         "name": "Raphael",
@@ -503,6 +569,31 @@ def test_buscar_logs_com_limite_acima_do_maximo(client):
     headers = {"Authorization": f"Bearer {token}"}
 
     response = client.get("/api/auth/logs?limit=101", headers=headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == ("O limite deve estar entre 1 e 100.")
+
+
+def test_buscar_logs_com_limite_negativo(client):
+    payload = {
+        "name": "Teste Limite Negativo",
+        "email": "teste@email.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/auth/logs?limit=-1", headers=headers)
 
     assert response.status_code == 400
     assert response.json()["detail"] == ("O limite deve estar entre 1 e 100.")
@@ -631,6 +722,38 @@ def test_buscar_logs_pagina_sem_registro(client):
     assert data["pages"] >= 1
 
 
+def test_buscar_logs_sem_registro(client):
+    payload = {
+        "name": "Usuario Sem Logs",
+        "email": "sem.logs@teste.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": payload["email"],
+            "password": payload["password"],
+        },
+    )
+    assert login.status_code == 200
+
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/auth/logs?page=99&limit=10", headers=headers)
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["items"] == []
+    assert data["page"] == 99
+    assert data["limit"] == 10
+
+
 def test_buscar_logs_ordenados_por_login_mais_recente(client):
     payload = {
         "name": "Teste ordenacao",
@@ -674,3 +797,287 @@ def test_buscar_logs_ordenados_por_login_mais_recente(client):
     datas = [log["login_at"] for log in logs]
 
     assert datas == sorted(datas, reverse=True)
+
+
+def test_buscar_logs_de_multiplos_usuarios(client):
+    usuario1 = {
+        "name": "Usuario 1",
+        "email": "usuario1@teste.com",
+        "password": "usuario1senha",
+    }
+
+    usuario2 = {
+        "name": "Usuario 2",
+        "email": "usuario2@teste.com",
+        "password": "usuario2senha",
+    }
+
+    cadastro1 = client.post("/api/auth/register", json=usuario1)
+    assert cadastro1.status_code == 201
+
+    cadastro2 = client.post("/api/auth/register", json=usuario2)
+    assert cadastro2.status_code == 201
+
+    login1 = client.post(
+        "/api/auth/login",
+        json={
+            "email": usuario1["email"],
+            "password": usuario1["password"],
+        },
+    )
+    assert login1.status_code == 200
+    token = login1.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    login2 = client.post(
+        "/api/auth/login",
+        json={
+            "email": usuario2["email"],
+            "password": usuario2["password"],
+        },
+    )
+    assert login2.status_code == 200
+
+    response = client.get("/api/auth/logs", headers=headers)
+    assert response.status_code == 200
+
+    data = response.json()
+    emails = [log["email"] for log in data["items"]]
+
+    assert usuario1["email"] in emails
+    assert usuario2["email"] in emails
+
+
+def test_buscar_logs_com_pagina_negativa(client):
+    payload = {
+        "name": "Teste pagina negativa",
+        "email": "paginanegativa@teste.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/auth/logs?page=-1", headers=headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "A página deve ser maior ou igual a 1."
+
+
+def test_buscar_logs_calculo_total_paginas(client):
+    payload = {
+        "name": "Teste Total Paginas",
+        "email": "total.paginas@teste.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    credenciais = {
+        "email": payload["email"],
+        "password": payload["password"],
+    }
+
+    for _ in range(5):
+        login = client.post("/api/auth/login", json=credenciais)
+        assert login.status_code == 200
+
+        token = login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        logout = client.post(
+            "/api/auth/logout",
+            headers=headers,
+        )
+        assert logout.status_code == 200
+
+    login = client.post("/api/auth/login", json=credenciais)
+    assert login.status_code == 200
+
+    token = login.json()["access_token"]
+
+    response = client.get(
+        "/api/auth/logs?limit=2",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["total"] == 6
+    assert data["limit"] == 2
+    assert data["pages"] == 3
+    assert len(data["items"]) == 2
+
+
+def test_buscar_logs_ultima_pagina(client):
+    payload = {
+        "name": "Teste Ultima Pagina",
+        "email": "ultima.pagina@teste.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    credenciais = {
+        "email": payload["email"],
+        "password": payload["password"],
+    }
+
+    for _ in range(3):
+        login = client.post("/api/auth/login", json=credenciais)
+        assert login.status_code == 200
+
+        token = login.json()["access_token"]
+
+        logout = client.post(
+            "/api/auth/logout",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert logout.status_code == 200
+
+    login = client.post("/api/auth/login", json=credenciais)
+    assert login.status_code == 200
+
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get(
+        "/api/auth/logs?page=2&limit=2",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["page"] == 2
+    assert data["limit"] == 2
+    assert data["total"] == 4
+    assert data["pages"] == 2
+    assert len(data["items"]) == 2
+
+
+def test_buscar_logs_retorna_apenas_registros_do_limite(client):
+    payload = {
+        "name": "Teste Limite de Registros",
+        "email": "limite.registros@teste.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    credenciais = {
+        "email": payload["email"],
+        "password": payload["password"],
+    }
+
+    for _ in range(4):
+        login = client.post("/api/auth/login", json=credenciais)
+        assert login.status_code == 200
+
+        token = login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        logout = client.post(
+            "/api/auth/logout",
+            headers=headers,
+        )
+        assert logout.status_code == 200
+
+    login = client.post("/api/auth/login", json=credenciais)
+    assert login.status_code == 200
+
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get(
+        "/api/auth/logs?limit=2",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["limit"] == 2
+    assert data["total"] == 5
+    assert len(data["items"]) == 2
+
+
+def test_buscar_logs_total_consistente_entre_paginas(client):
+    payload = {
+        "name": "Teste Total Consistente",
+        "email": "total.consistente@teste.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    credenciais = {
+        "email": payload["email"],
+        "password": payload["password"],
+    }
+
+    for _ in range(5):
+        login = client.post("/api/auth/login", json=credenciais)
+        assert login.status_code == 200
+
+        token = login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        logout = client.post(
+            "/api/auth/logout",
+            headers=headers,
+        )
+        assert logout.status_code == 200
+
+    login = client.post("/api/auth/login", json=credenciais)
+    assert login.status_code == 200
+    token = login.json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    pagina1 = client.get(
+        "/api/auth/logs?page=1&limit=2",
+        headers=headers,
+    )
+    assert pagina1.status_code == 200
+
+    pagina2 = client.get(
+        "/api/auth/logs?page=2&limit=2",
+        headers=headers,
+    )
+    assert pagina2.status_code == 200
+
+    pagina3 = client.get(
+        "/api/auth/logs?page=3&limit=2",
+        headers=headers,
+    )
+    assert pagina3.status_code == 200
+
+    dados1 = pagina1.json()
+    dados2 = pagina2.json()
+    dados3 = pagina3.json()
+
+    assert dados1["total"] == 6
+    assert dados2["total"] == 6
+    assert dados3["total"] == 6
+
+    assert len(dados1["items"]) == 2
+    assert len(dados2["items"]) == 2
+    assert len(dados3["items"]) == 2
