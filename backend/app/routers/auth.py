@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,7 @@ from ..limiter import limiter
 from ..models import AccessLog, User
 from ..schemas import (
     AccessLogPaginationResponse,
+    AccessLogResponse,
     MessageResponse,
     Token,
     UserCreate,
@@ -174,7 +176,7 @@ def get_access_logs(
     db: DbSession,
     page: int = 1,
     limit: int = 10,
-):
+) -> AccessLogPaginationResponse:
     if page < 1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -187,22 +189,28 @@ def get_access_logs(
             detail="O limite deve estar entre 1 e 100.",
         )
 
-    query = db.query(
-        User.name, User.email, AccessLog.login_at, AccessLog.logout_at
-    ).join(AccessLog, AccessLog.user_id == User.id)
+    query = select(User, AccessLog).join(AccessLog, AccessLog.user_id == User.id)
 
-    total = query.count()
+    total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
 
     offset = (page - 1) * limit
 
-    logs = query.order_by(AccessLog.login_at.desc()).offset(offset).limit(limit).all()
+    logs = db.execute(
+        query.order_by(AccessLog.login_at.desc()).offset(offset).limit(limit)
+    )
+
+    items = [
+        AccessLogResponse(
+            name=user.name,
+            email=user.email,
+            login_at=access_log.login_at,
+            logout_at=access_log.logout_at,
+        )
+        for user, access_log in logs
+    ]
 
     total_pages = (total + limit - 1) // limit
 
-    return {
-        "items": logs,
-        "page": page,
-        "limit": limit,
-        "total": total,
-        "pages": total_pages,
-    }
+    return AccessLogPaginationResponse(
+        items=items, page=page, limit=limit, total=total, pages=total_pages
+    )
