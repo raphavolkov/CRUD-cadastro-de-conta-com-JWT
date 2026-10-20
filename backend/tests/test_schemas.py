@@ -1,7 +1,6 @@
 from datetime import datetime
 
 import pytest
-
 from app.models import User
 from app.schemas import (
     AccessLogPaginationResponse,
@@ -34,7 +33,9 @@ def test_user_create_email_invalido():
 
 def test_user_create_sem_nome():
     with pytest.raises(ValueError):
-        UserCreate(email="raphael@teste.com", password="12345678")
+        UserCreate.model_validate(
+            {"email": "raphael@teste.com", "password": "12345678"}
+        )
 
 
 def test_user_login_valido():
@@ -56,12 +57,12 @@ def test_user_login_senha_curta():
 
 def test_user_login_email_ausente():
     with pytest.raises(ValueError):
-        UserLogin(password="12345678")
+        UserLogin.model_validate({"password": "12345678"})
 
 
 def test_user_login_senha_ausente():
     with pytest.raises(ValueError):
-        UserLogin(email="raphael@email.com")
+        UserLogin.model_validate({"email": "raphael@email.com"})
 
 
 def test_user_response_valido():
@@ -97,10 +98,12 @@ def test_user_response_nao_expoe_senha():
 
 def test_user_response_email_ausente():
     with pytest.raises(ValueError):
-        UserResponse(
-            id="123",
-            name="Raphael",
-            created_at=datetime(2026, 10, 8, 10, 30),
+        UserResponse.model_validate(
+            {
+                "id": "123",
+                "name": "Raphael",
+                "created_at": datetime(2026, 10, 8, 10, 30),
+            }
         )
 
 
@@ -116,12 +119,12 @@ def test_token_valido():
 
 def test_token_access_token_ausente():
     with pytest.raises(ValueError):
-        Token(token_type="bearer")
+        Token.model_validate({"token_type": "bearer"})
 
 
 def test_token_token_type_ausente():
     with pytest.raises(ValueError):
-        Token(access_token="meu-token-123")
+        Token.model_validate({"access_token": "meu-token-123"})
 
 
 def test_message_response_valido():
@@ -132,7 +135,7 @@ def test_message_response_valido():
 
 def test_message_response_mensagem_ausente():
     with pytest.raises(ValueError):
-        MessageResponse()
+        MessageResponse.model_validate({})
 
 
 def test_access_log_response_valido():
@@ -206,11 +209,13 @@ def test_access_log_pagination_response_valido_lista_vazia():
 
 def test_access_log_pagination_response_pages_ausente():
     with pytest.raises(ValueError):
-        AccessLogPaginationResponse(
-            items=[],
-            page=1,
-            limit=10,
-            total=1,
+        AccessLogPaginationResponse.model_validate(
+            {
+                "items": [],
+                "page": 1,
+                "limit": 10,
+                "total": 1,
+            }
         )
 
 

@@ -3,12 +3,11 @@ import sys
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from app.security import ALGORITHM, SECRET_KEY, create_access_token, decode_access_token
 from jose import jwt
 
-from app.security import ALGORITHM, SECRET_KEY, create_access_token, decode_access_token
 
-
-def test_security_falha_sem_secret_key(monkeypatch):
+def test_security_falha_sem_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SECRET_KEY", "")
 
     sys.modules.pop("app.security", None)

@@ -1,20 +1,21 @@
 from unittest.mock import patch
 
-from sqlalchemy.exc import IntegrityError
-
 from app.main import app
 from app.models import User
 from app.security import get_current_session
+from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 
-def test_rota_raiz(client):
+def test_rota_raiz(client: TestClient) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
     assert response.json() == {"message": "Api no ar"}
 
 
-def test_cadastrar_usuario(client):
+def test_cadastrar_usuario(client: TestClient) -> None:
 
     response = client.post(
         "/api/auth/register",
@@ -35,7 +36,7 @@ def test_cadastrar_usuario(client):
     assert "password_hash" not in data
 
 
-def test_cadastrar_usuario_sem_nome(client):
+def test_cadastrar_usuario_sem_nome(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
         json={"email": "raphael@teste.com", "password": "Senha123456"},
@@ -44,7 +45,7 @@ def test_cadastrar_usuario_sem_nome(client):
     assert response.status_code == 422
 
 
-def test_cadastrar_usuario_sem_senha(client):
+def test_cadastrar_usuario_sem_senha(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
         json={"name": "Raphael", "email": "raphael@teste.com"},
@@ -53,7 +54,7 @@ def test_cadastrar_usuario_sem_senha(client):
     assert response.status_code == 422
 
 
-def test_cadastrar_usuario_email_duplicado(client):
+def test_cadastrar_usuario_email_duplicado(client: TestClient) -> None:
     payload = {
         "name": "Raphael",
         "email": "raphael@teste.com",
@@ -67,7 +68,7 @@ def test_cadastrar_usuario_email_duplicado(client):
     assert segunda_resposta.status_code == 400
 
 
-def test_cadastrar_usuario_com_email_invalido(client):
+def test_cadastrar_usuario_com_email_invalido(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
         json={"name": "Raphael", "email": "email_invalido", "senha": "Senha123456"},
@@ -76,7 +77,7 @@ def test_cadastrar_usuario_com_email_invalido(client):
     assert response.status_code == 422
 
 
-def test_cadastrar_usuario_com_senha_curta(client):
+def test_cadastrar_usuario_com_senha_curta(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
         json={
@@ -89,7 +90,7 @@ def test_cadastrar_usuario_com_senha_curta(client):
     assert response.status_code == 422
 
 
-def test_cadastrar_usuario_sem_dados(client):
+def test_cadastrar_usuario_sem_dados(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
         json={},
@@ -98,7 +99,7 @@ def test_cadastrar_usuario_sem_dados(client):
     assert response.status_code == 422
 
 
-def test_login_sem_dados(client):
+def test_login_sem_dados(client: TestClient) -> None:
     response = client.post(
         "/api/auth/login",
         json={},
@@ -107,7 +108,7 @@ def test_login_sem_dados(client):
     assert response.status_code == 422
 
 
-def test_login_sucesso(client):
+def test_login_sucesso(client: TestClient) -> None:
     cadastro = client.post(
         "/api/auth/register",
         json={
@@ -132,7 +133,7 @@ def test_login_sucesso(client):
     assert data["token_type"] == "bearer"
 
 
-def test_login_sem_senha(client):
+def test_login_sem_senha(client: TestClient) -> None:
     response = client.post(
         "/api/auth/login",
         json={
@@ -143,7 +144,7 @@ def test_login_sem_senha(client):
     assert response.status_code == 422
 
 
-def test_login_senha_invalida(client):
+def test_login_senha_invalida(client: TestClient) -> None:
     dados_usuario = {
         "name": "Raphael",
         "email": "raphael@teste.com",
@@ -166,7 +167,7 @@ def test_login_senha_invalida(client):
     assert response.json()["detail"] == "Email ou senha inválidos"
 
 
-def test_login_email_invalido(client):
+def test_login_email_invalido(client: TestClient) -> None:
     dados_usuario = {
         "name": "Raphael",
         "email": "raphael@teste.com",
@@ -189,7 +190,7 @@ def test_login_email_invalido(client):
     assert response.json()["detail"] == "Email ou senha inválidos."
 
 
-def test_login_com_sessao_ativa(client):
+def test_login_com_sessao_ativa(client: TestClient) -> None:
     dados_usuario = {
         "name": "Raphael",
         "email": "raphael@teste.com",
@@ -215,7 +216,7 @@ def test_login_com_sessao_ativa(client):
     assert segundo_login.json()["detail"] == ("Essa conta já está conectada")
 
 
-def test_login_novamente_apos_logout(client):
+def test_login_novamente_apos_logout(client: TestClient) -> None:
     payload = {"name": "Teste", "email": "relogin@email.com", "password": "Senha123!"}
 
     cadastro = client.post("/api/auth/register", json=payload)
@@ -242,7 +243,7 @@ def test_login_novamente_apos_logout(client):
     assert segundo_login.json()["token_type"] == "bearer"
 
 
-def test_login_email_inexistente(client):
+def test_login_email_inexistente(client: TestClient) -> None:
     response = client.post(
         "/api/auth/login",
         json={
@@ -255,7 +256,7 @@ def test_login_email_inexistente(client):
     assert response.json()["detail"] == "Email ou senha inválidos."
 
 
-def test_login_sem_email(client):
+def test_login_sem_email(client: TestClient) -> None:
     response = client.post(
         "/api/auth/login",
         json={"password": "Senha123456"},
@@ -264,7 +265,7 @@ def test_login_sem_email(client):
     assert response.status_code == 422
 
 
-def test_login_com_erro_ao_salvar_sessao(client):
+def test_login_com_erro_ao_salvar_sessao(client: TestClient) -> None:
     payload = {
         "name": "Raphael",
         "email": "raphael@email.com",
@@ -289,7 +290,7 @@ def test_login_com_erro_ao_salvar_sessao(client):
     assert response.json()["detail"] == "Essa conta já está conectada"
 
 
-def test_logout_sucesso(client):
+def test_logout_sucesso(client: TestClient) -> None:
     payload = {
         "name": "Teste",
         "email": "logout@email.com",
@@ -317,13 +318,13 @@ def test_logout_sucesso(client):
     assert logout.json()["message"] == "Logout realizado com sucesso"
 
 
-def test_logout_sem_token(client):
+def test_logout_sem_token(client: TestClient) -> None:
     response = client.post("/api/auth/logout")
 
     assert response.status_code == 401
 
 
-def test_logout_com_token_malformado(client):
+def test_logout_com_token_malformado(client: TestClient) -> None:
     response = client.post(
         "/api/auth/logout",
         headers={
@@ -334,7 +335,7 @@ def test_logout_com_token_malformado(client):
     assert response.status_code == 401
 
 
-def test_logout_sem_sessao_ativa(client):
+def test_logout_sem_sessao_ativa(client: TestClient) -> None:
     def override_get_current_session():
         return ("usuario-inexistente", "sessao-inexistente")
 
@@ -349,7 +350,7 @@ def test_logout_sem_sessao_ativa(client):
     assert response.json()["detail"] == "Nenhuma sessão ativa encontrada"
 
 
-def test_token_invalido_apos_logout(client):
+def test_token_invalido_apos_logout(client: TestClient) -> None:
     payload = {
         "name": "Teste",
         "email": "token.logout@email.com",
@@ -380,7 +381,7 @@ def test_token_invalido_apos_logout(client):
     assert resposta.json()["detail"] == "Token inválido ou sessão encerrada."
 
 
-def test_buscar_proprio_usuario(client):
+def test_buscar_proprio_usuario(client: TestClient) -> None:
     payload = {"name": "Raphael", "email": "me@teste.com", "password": "Senha123456"}
 
     cadastro = client.post("/api/auth/register", json=payload)
@@ -408,13 +409,13 @@ def test_buscar_proprio_usuario(client):
     assert "password_hash" not in data
 
 
-def test_buscar_proprio_usuario_sem_token(client):
+def test_buscar_proprio_usuario_sem_token(client: TestClient) -> None:
     response = client.get("/api/auth/me")
 
     assert response.status_code == 401
 
 
-def test_buscar_proprio_usuario_com_token_invalido(client):
+def test_buscar_proprio_usuario_com_token_invalido(client: TestClient) -> None:
     response = client.get(
         "/api/auth/me", headers={"Authorization": "Bearer token_invalido"}
     )
@@ -422,7 +423,7 @@ def test_buscar_proprio_usuario_com_token_invalido(client):
     assert response.status_code == 401
 
 
-def test_buscar_proprio_usuario_apos_logout(client):
+def test_buscar_proprio_usuario_apos_logout(client: TestClient) -> None:
     payload = {
         "name": "Raphael",
         "email": "raphael@email.com",
@@ -452,7 +453,7 @@ def test_buscar_proprio_usuario_apos_logout(client):
     assert response.status_code == 401
 
 
-def test_buscar_proprio_usuario_nao_encontrado(client, db):
+def test_buscar_proprio_usuario_nao_encontrado(client: TestClient, db: Session) -> None:
     payload = {
         "name": "Raphael",
         "email": "raphael@teste.com",
@@ -473,6 +474,8 @@ def test_buscar_proprio_usuario_nao_encontrado(client, db):
 
     usuario = db.query(User).filter(User.email == payload["email"]).first()
 
+    assert usuario is not None
+
     db.delete(usuario)
     db.commit()
 
@@ -482,13 +485,13 @@ def test_buscar_proprio_usuario_nao_encontrado(client, db):
     assert response.json()["detail"] == "Usuário não encontrado."
 
 
-def test_buscar_logs_sem_token(client):
+def test_buscar_logs_sem_token(client: TestClient) -> None:
     response = client.get("/api/auth/logs")
 
     assert response.status_code == 401
 
 
-def test_buscar_logs_com_token_invalido(client):
+def test_buscar_logs_com_token_invalido(client: TestClient) -> None:
     response = client.get(
         "/api/auth/logs",
         headers={"Authorization": "Bearer token_invalido"},
@@ -497,7 +500,7 @@ def test_buscar_logs_com_token_invalido(client):
     assert response.status_code == 401
 
 
-def test_buscar_logs_com_pagina_invalida(client):
+def test_buscar_logs_com_pagina_invalida(client: TestClient) -> None:
     payload = {
         "name": "Raphael",
         "email": "raphael@email.com",
@@ -527,7 +530,7 @@ def test_buscar_logs_com_pagina_invalida(client):
     assert response.json()["detail"] == "A página deve ser maior ou igual a 1."
 
 
-def test_buscar_logs_com_limite_minimo(client):
+def test_buscar_logs_com_limite_minimo(client: TestClient) -> None:
     payload = {
         "name": "Teste Limite Minimo",
         "email": "limite.minimo@teste.com",
@@ -561,7 +564,7 @@ def test_buscar_logs_com_limite_minimo(client):
     assert data["total"] >= 1
 
 
-def test_buscar_logs_com_limite_maximo(client):
+def test_buscar_logs_com_limite_maximo(client: TestClient) -> None:
     payload = {
         "name": "Teste Limite Maximo",
         "email": "testelimitemaximo@teste.com",
@@ -593,7 +596,7 @@ def test_buscar_logs_com_limite_maximo(client):
     assert len(data["items"]) <= 100
 
 
-def test_buscar_logs_com_limite_invalido(client):
+def test_buscar_logs_com_limite_invalido(client: TestClient) -> None:
     payload = {
         "name": "Raphael",
         "email": "raphael@email.com",
@@ -623,7 +626,7 @@ def test_buscar_logs_com_limite_invalido(client):
     assert response.json()["detail"] == ("O limite deve estar entre 1 e 100.")
 
 
-def test_buscar_logs_com_limite_acima_do_maximo(client):
+def test_buscar_logs_com_limite_acima_do_maximo(client: TestClient) -> None:
     payload = {
         "name": "Raphael",
         "email": "raphael@email.com",
@@ -653,7 +656,7 @@ def test_buscar_logs_com_limite_acima_do_maximo(client):
     assert response.json()["detail"] == ("O limite deve estar entre 1 e 100.")
 
 
-def test_buscar_logs_com_limite_negativo(client):
+def test_buscar_logs_com_limite_negativo(client: TestClient) -> None:
     payload = {
         "name": "Teste Limite Negativo",
         "email": "teste@email.com",
@@ -678,7 +681,7 @@ def test_buscar_logs_com_limite_negativo(client):
     assert response.json()["detail"] == ("O limite deve estar entre 1 e 100.")
 
 
-def test_buscar_logs_sucesso(client):
+def test_buscar_logs_sucesso(client: TestClient) -> None:
     payload = {
         "name": "Raphael",
         "email": "raphael@email.com",
@@ -722,7 +725,7 @@ def test_buscar_logs_sucesso(client):
     assert "logout_at" in log
 
 
-def test_buscar_logs_paginacao(client):
+def test_buscar_logs_paginacao(client: TestClient) -> None:
     payload = {
         "name": "Teste Paginacao",
         "email": "paginacao@teste.com",
@@ -766,7 +769,7 @@ def test_buscar_logs_paginacao(client):
     assert len(data["items"]) == 2
 
 
-def test_buscar_logs_pagina_sem_registro(client):
+def test_buscar_logs_pagina_sem_registro(client: TestClient) -> None:
     payload = {
         "name": "Teste Pagina Vazia",
         "email": "pagina.vazia@teste.com",
@@ -801,7 +804,7 @@ def test_buscar_logs_pagina_sem_registro(client):
     assert data["pages"] >= 1
 
 
-def test_buscar_logs_sem_registro(client):
+def test_buscar_logs_sem_registro(client: TestClient) -> None:
     payload = {
         "name": "Usuario Sem Logs",
         "email": "sem.logs@teste.com",
@@ -833,7 +836,7 @@ def test_buscar_logs_sem_registro(client):
     assert data["limit"] == 10
 
 
-def test_buscar_logs_ordenados_por_login_mais_recente(client):
+def test_buscar_logs_ordenados_por_login_mais_recente(client: TestClient) -> None:
     payload = {
         "name": "Teste ordenacao",
         "email": "ordenacao@teste.com",
@@ -878,7 +881,7 @@ def test_buscar_logs_ordenados_por_login_mais_recente(client):
     assert datas == sorted(datas, reverse=True)
 
 
-def test_buscar_logs_de_multiplos_usuarios(client):
+def test_buscar_logs_de_multiplos_usuarios(client: TestClient) -> None:
     usuario1 = {
         "name": "Usuario 1",
         "email": "usuario1@teste.com",
@@ -927,7 +930,7 @@ def test_buscar_logs_de_multiplos_usuarios(client):
     assert usuario2["email"] in emails
 
 
-def test_buscar_logs_com_pagina_negativa(client):
+def test_buscar_logs_com_pagina_negativa(client: TestClient) -> None:
     payload = {
         "name": "Teste pagina negativa",
         "email": "paginanegativa@teste.com",
@@ -952,7 +955,7 @@ def test_buscar_logs_com_pagina_negativa(client):
     assert response.json()["detail"] == "A página deve ser maior ou igual a 1."
 
 
-def test_buscar_logs_calculo_total_paginas(client):
+def test_buscar_logs_calculo_total_paginas(client: TestClient) -> None:
     payload = {
         "name": "Teste Total Paginas",
         "email": "total.paginas@teste.com",
@@ -1000,7 +1003,7 @@ def test_buscar_logs_calculo_total_paginas(client):
     assert len(data["items"]) == 2
 
 
-def test_buscar_logs_ultima_pagina(client):
+def test_buscar_logs_ultima_pagina(client: TestClient) -> None:
     payload = {
         "name": "Teste Ultima Pagina",
         "email": "ultima.pagina@teste.com",
@@ -1049,7 +1052,7 @@ def test_buscar_logs_ultima_pagina(client):
     assert len(data["items"]) == 2
 
 
-def test_buscar_logs_retorna_apenas_registros_do_limite(client):
+def test_buscar_logs_retorna_apenas_registros_do_limite(client: TestClient) -> None:
     payload = {
         "name": "Teste Limite de Registros",
         "email": "limite.registros@teste.com",
@@ -1097,7 +1100,7 @@ def test_buscar_logs_retorna_apenas_registros_do_limite(client):
     assert len(data["items"]) == 2
 
 
-def test_buscar_logs_total_consistente_entre_paginas(client):
+def test_buscar_logs_total_consistente_entre_paginas(client: TestClient) -> None:
     payload = {
         "name": "Teste Total Consistente",
         "email": "total.consistente@teste.com",

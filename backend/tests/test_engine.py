@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
-from sqlalchemy.orm import Session
-
+import pytest
 from app import database, models
+from sqlalchemy.orm import Session
 
 
 def test_database_session(db: Session):
@@ -42,7 +42,7 @@ def test_buscar_usuario(db: Session):
     assert email_encontrado == "maria@teste.com"
 
 
-def test_get_db_retorna_sessao(monkeypatch):
+def test_get_db_retorna_sessao(monkeypatch: pytest.MonkeyPatch) -> None:
     sessao_falsa = MagicMock()
 
     monkeypatch.setattr(database, "SessionLocal", lambda: sessao_falsa)
@@ -57,7 +57,7 @@ def test_get_db_retorna_sessao(monkeypatch):
     sessao_falsa.close.assert_called_once()
 
 
-def test_get_db_fecha_sessao_apos_excecao(monkeypatch):
+def test_get_db_fecha_sessao_apos_excecao(monkeypatch: pytest.MonkeyPatch) -> None:
     sessao_falsa = MagicMock()
 
     monkeypatch.setattr(database, "SessionLocal", lambda: sessao_falsa)
@@ -70,4 +70,4 @@ def test_get_db_fecha_sessao_apos_excecao(monkeypatch):
     except ValueError:
         pass
 
-    sessao_falsa.close.asset_called_once()
+    sessao_falsa.close.assert_called_once()
