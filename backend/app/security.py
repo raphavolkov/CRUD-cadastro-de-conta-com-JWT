@@ -1,6 +1,6 @@
 import os
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Annotated, Any
 
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
@@ -74,8 +74,8 @@ def decode_access_token(token: str) -> tuple[str, str]:
 
 
 def get_current_session(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> tuple[str, str]:
     token = credentials.credentials
 
