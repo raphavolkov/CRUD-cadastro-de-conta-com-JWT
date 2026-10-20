@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Column, DateTime, Index, String, text
 
@@ -13,7 +13,7 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
 
 
 class AccessLog(Base):
@@ -22,7 +22,7 @@ class AccessLog(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     session_id = Column(String(36), nullable=True)
     user_id = Column(String(36), nullable=False)
-    login_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    login_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
     expires_at = Column(DateTime, nullable=True)
     logout_at = Column(DateTime, nullable=True)
 
