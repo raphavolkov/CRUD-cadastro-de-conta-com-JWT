@@ -68,7 +68,7 @@ def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db))
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou senha inválidos"
         )
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     db.query(AccessLog).filter(
         AccessLog.user_id == user.id,
@@ -156,7 +156,7 @@ def logout(
             detail="Nenhuma sessão ativa encontrada",
         )
 
-    access_log.logout_at = datetime.utcnow()
+    access_log.logout_at = datetime.now(UTC)
 
     db.commit()
 
