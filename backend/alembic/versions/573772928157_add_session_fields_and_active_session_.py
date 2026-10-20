@@ -9,7 +9,6 @@ Create Date: 2026-09-24 12:52:12.008791
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -37,9 +36,7 @@ def upgrade() -> None:
 
     rows = connection.execute(
         sa.text(
-            "SELECT id, login_at, logout_at "
-            "FROM access_logs "
-            "WHERE session_id IS NULL"
+            "SELECT id, login_at, logout_at FROM access_logs WHERE session_id IS NULL"
         )
     ).fetchall()
 
@@ -59,15 +56,12 @@ def upgrade() -> None:
         )
 
     connection.execute(
-        sa.text(
-            "UPDATE access_logs " "SET logout_at = login_at " "WHERE logout_at IS NULL"
-        )
+        sa.text("UPDATE access_logs SET logout_at = login_at WHERE logout_at IS NULL")
     )
 
     connection.execute(
         sa.text(
-            "CREATE UNIQUE INDEX ux_access_logs_session_id "
-            "ON access_logs(session_id)"
+            "CREATE UNIQUE INDEX ux_access_logs_session_id ON access_logs(session_id)"
         )
     )
 
@@ -86,7 +80,7 @@ def downgrade() -> None:
     connection = op.get_bind()
 
     connection.execute(
-        sa.text("DROP INDEX IF EXISTS " "ux_access_logs_one_active_session_per_user")
+        sa.text("DROP INDEX IF EXISTS ux_access_logs_one_active_session_per_user")
     )
 
     connection.execute(sa.text("DROP INDEX IF EXISTS ux_access_logs_session_id"))
