@@ -1,20 +1,20 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from datetime import UTC, datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
 
-from ..limiter import limiter
 from ..database import get_db
-from ..models import User, AccessLog
+from ..limiter import limiter
+from ..models import AccessLog, User
 from ..schemas import (
-    UserCreate,
-    UserResponse,
-    UserLogin,
-    Token,
-    MessageResponse,
-    AccessLogResponse,
     AccessLogPaginationResponse,
+    MessageResponse,
+    Token,
+    UserCreate,
+    UserLogin,
+    UserResponse,
 )
 from ..security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
