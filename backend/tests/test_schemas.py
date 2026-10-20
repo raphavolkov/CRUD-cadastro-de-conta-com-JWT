@@ -1,15 +1,16 @@
-import pytest
 from datetime import datetime
+
+import pytest
 
 from app.models import User
 from app.schemas import (
+    AccessLogPaginationResponse,
+    AccessLogResponse,
+    MessageResponse,
+    Token,
     UserCreate,
     UserLogin,
     UserResponse,
-    Token,
-    MessageResponse,
-    AccessLogResponse,
-    AccessLogPaginationResponse,
 )
 
 

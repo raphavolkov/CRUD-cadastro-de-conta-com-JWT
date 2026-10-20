@@ -1,7 +1,9 @@
 from unittest.mock import patch
+
 from sqlalchemy.exc import IntegrityError
-from app.models import User
+
 from app.main import app
+from app.models import User
 from app.security import get_current_session
 
 

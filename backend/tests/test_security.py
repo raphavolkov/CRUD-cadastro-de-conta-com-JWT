@@ -1,10 +1,11 @@
-import sys
 import importlib
-import pytest
+import sys
+from datetime import UTC, datetime, timedelta
 
-from datetime import datetime, timedelta, timezone
+import pytest
 from jose import jwt
-from app.security import SECRET_KEY, ALGORITHM, create_access_token, decode_access_token
+
+from app.security import ALGORITHM, SECRET_KEY, create_access_token, decode_access_token
 
 
 def test_security_falha_sem_secret_key(monkeypatch):
@@ -34,10 +35,10 @@ def test_criar_token_com_validade_personalizada():
 
     expiracao = datetime.fromtimestamp(
         payload["exp"],
-        tz=timezone.utc,
+        tz=UTC,
     )
 
-    agora = datetime.now(timezone.utc)
+    agora = datetime.now(UTC)
 
     assert expiracao > agora
     assert expiracao <= agora + validade

@@ -1,6 +1,8 @@
-from sqlalchemy.orm import Session
-from app import models, database
 from unittest.mock import MagicMock
+
+from sqlalchemy.orm import Session
+
+from app import database, models
 
 
 def test_database_session(db: Session):
