@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..limiter import limiter
+from ..limiter import rate_limit
 from ..models import AccessLog, User
 from ..schemas import (
     AccessLogPaginationResponse,
@@ -38,8 +38,8 @@ CurrentSession = Annotated[tuple[str, str], Depends(get_current_session)]
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
-@limiter.limit("5/minute")
-def register(request: Request, user_data: UserCreate, db: DbSession):
+@rate_limit("5/minute")
+def register(request: Request, user_data: UserCreate, db: DbSession) -> UserResponse:
     existing_user = db.query(User).filter(User.email == user_data.email).first()
 
     if existing_user:
@@ -61,8 +61,8 @@ def register(request: Request, user_data: UserCreate, db: DbSession):
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit("10/minute")
-def login(request: Request, user_data: UserLogin, db: DbSession):
+@rate_limit("10/minute")
+def login(request: Request, user_data: UserLogin, db: DbSession) -> Token:
     user = db.query(User).filter(User.email == user_data.email).first()
 
     if not user:
@@ -125,7 +125,7 @@ def login(request: Request, user_data: UserLogin, db: DbSession):
             detail="Essa conta já está conectada",
         )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return Token(access_token=access_token, token_type="bearer")
 
 
 @router.get("/me", response_model=UserResponse)
