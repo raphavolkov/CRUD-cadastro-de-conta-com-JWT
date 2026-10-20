@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 
+from typing import Any
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -36,7 +37,9 @@ def verify_password(password: str, password_hash_value: str) -> bool:
     return password_hash.verify(password, password_hash_value)
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    data: dict[str, Any], expires_delta: timedelta | None = None
+) -> str:
 
     to_encode = data.copy()
 
