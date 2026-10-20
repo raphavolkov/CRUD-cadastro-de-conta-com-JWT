@@ -1,14 +1,14 @@
 import os
 from datetime import datetime, timedelta, timezone
-
 from typing import Any
+
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pwdlib import PasswordHash
-
 from sqlalchemy.orm import Session
+
 from .database import get_db
 from .models import AccessLog
 
