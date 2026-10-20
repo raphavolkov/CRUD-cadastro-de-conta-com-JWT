@@ -1,21 +1,29 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from .database import Base, engine
-from .routers import auth
-from . import models
 from .limiter import limiter
+from .routers import auth
 
 app = FastAPI()
 
 app.state.limiter = limiter
 
+
+def rate_limit_exceeded_handler(
+    request: Request,
+    exc: Exception,
+) -> Response:
+    if isinstance(exc, RateLimitExceeded):
+        return _rate_limit_exceeded_handler(request, exc)
+
+    raise exc
+
+
 app.add_exception_handler(
     RateLimitExceeded,
-    _rate_limit_exceeded_handler,
+    rate_limit_exceeded_handler,
 )
 
 app.add_middleware(
