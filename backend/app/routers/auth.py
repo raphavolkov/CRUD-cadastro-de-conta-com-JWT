@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
@@ -27,12 +28,16 @@ from ..security import (
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
+DbSession = Annotated[Session, Depends(get_db)]
+CurrentUserId = Annotated[str, Depends(get_current_user_id)]
+CurrentSession = Annotated[tuple[str, str], Depends(get_current_session)]
+
 
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
 @limiter.limit("5/minute")
-def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
+def register(request: Request, user_data: UserCreate, db: DbSession):
     existing_user = db.query(User).filter(User.email == user_data.email).first()
 
     if existing_user:
@@ -55,7 +60,7 @@ def register(request: Request, user_data: UserCreate, db: Session = Depends(get_
 
 @router.post("/login", response_model=Token)
 @limiter.limit("10/minute")
-def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db)):
+def login(request: Request, user_data: UserLogin, db: DbSession):
     user = db.query(User).filter(User.email == user_data.email).first()
 
     if not user:
@@ -122,7 +127,7 @@ def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db))
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+def get_me(user_id: CurrentUserId, db: DbSession):
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
@@ -135,8 +140,8 @@ def get_me(user_id: str = Depends(get_current_user_id), db: Session = Depends(ge
 
 @router.post("/logout", response_model=MessageResponse)
 def logout(
-    session: tuple[str, str] = Depends(get_current_session),
-    db: Session = Depends(get_db),
+    session: CurrentSession,
+    db: DbSession,
 ):
     user_id, session_id = session
 
@@ -165,10 +170,10 @@ def logout(
 
 @router.get("/logs", response_model=AccessLogPaginationResponse)
 def get_access_logs(
+    user_id: CurrentUserId,
+    db: DbSession,
     page: int = 1,
     limit: int = 10,
-    user_id: str = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
 ):
     if page < 1:
         raise HTTPException(
