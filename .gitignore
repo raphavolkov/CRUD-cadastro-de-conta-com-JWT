@@ -20,3 +20,6 @@ venv/
 # Sistema operacional
 Thumbs.db
 .DS_Store
+
+# Bancos de dados locais e backups
+data/

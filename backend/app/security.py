@@ -1,3 +1,4 @@
+import hashlib
 import os
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
@@ -24,7 +25,7 @@ SECRET_KEY: str = secret_key
 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
 password_hash = PasswordHash.recommended()
 
@@ -39,38 +40,87 @@ def verify_password(password: str, password_hash_value: str) -> bool:
     return password_hash.verify(password, password_hash_value)
 
 
+def hash_refresh_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def create_access_token(
     data: dict[str, Any], expires_delta: timedelta | None = None
 ) -> str:
-
     to_encode = data.copy()
 
-    if expires_delta:
-        expire = datetime.now(UTC) + expires_delta
-    else:
-        expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = (
+        datetime.now(UTC) + expires_delta
+        if expires_delta
+        else datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
 
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "type": "access"})
 
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> tuple[str, str]:
+def create_refresh_token(
+    data: dict[str, Any],
+    expires_delta: timedelta | None = None,
+) -> str:
+    to_encode = data.copy()
+
+    expire = (
+        datetime.now(UTC) + expires_delta
+        if expires_delta
+        else datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+
+    to_encode.update({"exp": expire, "type": "refresh"})
+
+    encoded_jwt = jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    return encoded_jwt
+
+
+def decode_refresh_token(token: str) -> tuple[str, str]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        if payload.get("type") != "refresh":
+            raise JWTError("Tipo de token inválido")
 
         user_id = payload.get("sub")
         session_id = payload.get("session_id")
 
-        if user_id is None or session_id is None:
-            raise JWTError
+        if not isinstance(user_id, str) or not isinstance(session_id, str):
+            raise JWTError("Payload inválido")
 
         return user_id, session_id
 
     except JWTError:
-        raise ValueError("Token inválido ou expirado.")
+        raise ValueError("Refresh token inválido ou expirado") from None
+
+
+def decode_access_token(token: str) -> tuple[str, str]:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        if payload.get("type") != "access":
+            raise JWTError("Tipo de Token inválido")
+
+        user_id = payload.get("sub")
+        session_id = payload.get("session_id")
+
+        if not isinstance(user_id, str) or not isinstance(session_id, str):
+            raise JWTError("Payload inválido")
+
+        return user_id, session_id
+
+    except JWTError:
+        raise ValueError("Token inválido ou expirado.") from None
 
 
 def get_current_session(

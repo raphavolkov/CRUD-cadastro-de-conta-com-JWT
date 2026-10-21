@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from app import database, models
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 
@@ -71,3 +72,13 @@ def test_get_db_fecha_sessao_apos_excecao(monkeypatch: pytest.MonkeyPatch) -> No
         pass
 
     sessao_falsa.close.assert_called_once()
+
+
+def test_refresh_token_tabela_registrada():
+    assert "refresh_tokens" in database.Base.metadata.tables
+
+
+def test_refresh_token_tabela_criada(db: Session):
+    tabelas = inspect(db.get_bind()).get_table_names()
+
+    assert "refresh_tokens" in tabelas

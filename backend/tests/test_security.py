@@ -3,7 +3,13 @@ import sys
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.security import ALGORITHM, SECRET_KEY, create_access_token, decode_access_token
+from app.security import (
+    ALGORITHM,
+    SECRET_KEY,
+    create_access_token,
+    create_refresh_token,
+    decode_access_token,
+)
 from jose import jwt
 
 
@@ -45,6 +51,19 @@ def test_criar_token_com_validade_personalizada():
     assert payload["session_id"] == "abc"
 
 
+def test_create_refresh_token():
+    token = create_refresh_token(
+        data={"sub": "usuario-teste", "session_id": "sessao-teste"}
+    )
+
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+    assert payload["sub"] == "usuario-teste"
+    assert payload["session_id"] == "sessao-teste"
+    assert payload["type"] == "refresh"
+    assert "exp" in payload
+
+
 def test_decode_token_sem_sub():
     token = jwt.encode(
         {"session_id": "abc"},
@@ -64,4 +83,13 @@ def test_decode_token_sem_session_id():
     )
 
     with pytest.raises(ValueError, match="Token inválido ou expirado."):
+        decode_access_token(token)
+
+
+def test_decode_access_token_rejeita_refresh_token():
+    token = create_refresh_token(
+        data={"sub": "usuario-teste", "session_id": "sessao-teste"}
+    )
+
+    with pytest.raises(ValueError, match="Token inválido ou expirado"):
         decode_access_token(token)

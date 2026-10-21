@@ -110,10 +110,12 @@ def test_user_response_email_ausente():
 def test_token_valido():
     token = Token(
         access_token="meu-token-123",
+        refresh_token="meu-refresh-token-123",
         token_type="bearer",
     )
 
     assert token.access_token == "meu-token-123"
+    assert token.refresh_token == "meu-refresh-token-123"
     assert token.token_type == "bearer"
 
 

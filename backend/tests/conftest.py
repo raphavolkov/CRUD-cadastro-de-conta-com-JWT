@@ -1,6 +1,8 @@
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
+from app import models
 from app.database import Base, get_db
 from app.limiter import limiter
 from app.main import app
@@ -8,7 +10,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-TEST_DATABASE_URL = "sqlite:///./test_database.db"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+TEST_DATABASE_URL = f"sqlite:///{(DATA_DIR / 'test_database.db').as_posix()}"
 
 test_engine = create_engine(
     TEST_DATABASE_URL,
