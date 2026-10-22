@@ -1512,3 +1512,124 @@ def test_refresh_token_com_sessao_expirada(
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Sessão expirada"
+
+
+def test_refresh_token_expirado_no_banco(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.models import RefreshToken
+    from app.security import hash_refresh_token
+
+    cadastro = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Teste",
+            "email": "refresh.banco.expirado@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "refresh.banco.expirado@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+
+    registro = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.token_hash == hash_refresh_token(refresh_token))
+        .first()
+    )
+    assert registro is not None
+
+    registro.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+    db.commit()
+
+    response = client.post(
+        "/api/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Refresh token expirado"
+
+
+def test_refresh_token_com_sessao_inexistente(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from app.models import AccessLog
+    from app.security import decode_refresh_token
+
+    cadastro = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Teste",
+            "email": "refresh.sessao.inexistente@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "refresh.sessao.inexistente@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+    user_id, session_id = decode_refresh_token(refresh_token)
+
+    sessao = (
+        db.query(AccessLog)
+        .filter(
+            AccessLog.session_id == session_id,
+            AccessLog.user_id == user_id,
+        )
+        .first()
+    )
+    assert sessao is not None
+
+    db.delete(sessao)
+    db.commit()
+
+    response = client.post(
+        "/api/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Sessão encerrada ou inválida"
+
+
+def test_decode_refresh_token_com_tipo_incorreto() -> None:
+    from datetime import timedelta
+
+    import pytest
+    from app.security import create_access_token, decode_refresh_token
+
+    token = create_access_token(
+        data={
+            "sub": "usuario-teste",
+            "session_id": "sessao-teste",
+        },
+        expires_delta=timedelta(minutes=5),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Refresh token inválido ou expirado",
+    ):
+        decode_refresh_token(token)
