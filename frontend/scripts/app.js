@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const loginForm = document.querySelector("#login-form");
   const logoutButton = document.querySelector("#logout-btn");
   const logsTableBody = document.querySelector("#logs-table-body");
+  let refreshPromise = null;
 
   function showToast(message, type = "success") {
     let container = document.querySelector("#toast-container");
@@ -33,6 +34,101 @@ document.addEventListener("DOMContentLoaded", async () => {
         toast.remove();
       }, 300);
     }, 3000);
+  }
+
+  async function refreshAccessToken() {
+    if (refreshPromise) {
+      return refreshPromise;
+    }
+
+    refreshPromise = (async () => {
+      const refreshToken = localStorage.getItem("refresh_token");
+
+      if (!refreshToken) {
+        return false;
+      }
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/api/auth/refresh", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            refresh_token: refreshToken,
+          }),
+        });
+
+        if (!response.ok) {
+          console.error("Falha ao renovar tokens:", response.status);
+          return false;
+        }
+
+        const data = await response.json();
+
+        if (!data.access_token || !data.refresh_token) {
+          return false;
+        }
+
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("refresh_token", data.refresh_token);
+
+        return true;
+      } catch (error) {
+        console.error("Erro ao renovar os tokens:", error);
+        return false;
+      }
+    })();
+
+    try {
+      return await refreshPromise;
+    } finally {
+      refreshPromise = null;
+    }
+  }
+
+  async function authenticatedFetch(url, options = {}) {
+    const sendRequest = () => {
+      const token = localStorage.getItem("token");
+
+      return fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    };
+
+    let response = await sendRequest();
+
+    if (response.status !== 401) {
+      return response;
+    }
+
+    const refreshed = await refreshAccessToken();
+
+    if (!refreshed) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("loggedUser");
+
+      window.location.replace("http://127.0.0.1:5500/frontend/pages/login.html");
+
+      return response;
+    }
+
+    response = await sendRequest();
+
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("loggedUser");
+
+      window.location.replace("http://127.0.0.1:5500/frontend/pages/login.html");
+    }
+
+    return response;
   }
 
   if (registerForm) {
@@ -143,6 +239,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         localStorage.setItem("token", data.access_token);
+        localStorage.setItem("refresh_token", data.refresh_token);
 
         console.log("Login realizado com sucesso.");
 
@@ -171,11 +268,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/auth/me", {
+      const response = await authenticatedFetch("http://127.0.0.1:8000/api/auth/me", {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       const data = await response.json();
@@ -202,11 +296,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       async function loadLogs(page) {
         try {
-          const logsResponse = await fetch(`http://127.0.0.1:8000/api/auth/logs?page=${page}&limit=${limit}`, {
+          const logsResponse = await authenticatedFetch(`http://127.0.0.1:8000/api/auth/logs?page=${page}&limit=${limit}`, {
             method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
           });
 
           const logs = await logsResponse.json();
@@ -304,11 +395,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/auth/logout", {
+        const response = await authenticatedFetch("http://127.0.0.1:8000/api/auth/logout", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         });
 
         const data = await response.json();
@@ -322,6 +410,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         localStorage.removeItem("token");
+        localStorage.removeItem("refresh_token");
         localStorage.removeItem("loggedUser");
 
         showToast("Você saiu da conta.");
