@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from app.main import app
 from app.models import User
 from app.security import get_current_session
@@ -1318,3 +1319,20 @@ def test_refresh_token_expirado(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Refresh token inválido ou expirado"
+
+
+def test_decode_refresh_token_expirado() -> None:
+    from datetime import timedelta
+
+    from app.security import create_refresh_token, decode_refresh_token
+
+    token = create_refresh_token(
+        data={
+            "sub": "usuario-teste",
+            "session_id": "sessao-teste",
+        },
+        expires_delta=timedelta(seconds=-1),
+    )
+
+    with pytest.raises(ValueError, match="Refresh token inválido ou expirado"):
+        decode_refresh_token(token)
