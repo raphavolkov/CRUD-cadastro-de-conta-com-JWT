@@ -1203,3 +1203,45 @@ def test_refresh_token_sucesso(client: TestClient) -> None:
     assert dados["token_type"] == "bearer"
     assert dados["access_token"] != login.json()["access_token"]
     assert dados["refresh_token"] != refresh_token_original
+
+
+def test_refresh_token_reutilizado_apos_rotacao(client: TestClient) -> None:
+    payload = {
+        "name": "raphael testudo",
+        "email": "raphael@raphael.com",
+        "password": "Raphael123",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    refresh_token_original = login.json()["refresh_token"]
+
+    primeira_renovacao = client.post(
+        "/api/auth/refresh",
+        json={
+            "refresh_token": refresh_token_original,
+        },
+    )
+    assert primeira_renovacao.status_code == 200
+
+    dados_renovados = primeira_renovacao.json()
+    novo_refresh_token = dados_renovados["refresh_token"]
+
+    assert novo_refresh_token != refresh_token_original
+
+    segunda_renovacao = client.post(
+        "/api/auth/refresh", json={"refresh_token": refresh_token_original}
+    )
+    assert segunda_renovacao.status_code == 401
+
+    terceira_renovacao = client.post(
+        "/api/auth/refresh", json={"refresh_token": novo_refresh_token}
+    )
+    assert terceira_renovacao.status_code == 200
