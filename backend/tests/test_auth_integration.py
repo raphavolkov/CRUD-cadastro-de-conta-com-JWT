@@ -1163,3 +1163,39 @@ def test_buscar_logs_total_consistente_entre_paginas(client: TestClient) -> None
     assert len(dados1["items"]) == 2
     assert len(dados2["items"]) == 2
     assert len(dados3["items"]) == 2
+
+
+def test_refresh_token_sucesso(client: TestClient) -> None:
+    payload = {
+        "name": "Raphael",
+        "email": "raphael@raphael.com",
+        "password": "Raphael123",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    refresh_token_original = login.json()["refresh_token"]
+
+    response = client.post(
+        "/api/auth/refresh", json={"refresh_token": refresh_token_original}
+    )
+
+    print("STATUS:", response.status_code)
+    print("RESPOSTA:", response.text)
+
+    assert response.status_code == 200
+
+    dados = response.json()
+
+    assert "access_token" in dados
+    assert "refresh_token" in dados
+    assert dados["token_type"] == "bearer"
+    assert dados["access_token"] != login.json()["access_token"]
+    assert dados["refresh_token"] != refresh_token_original

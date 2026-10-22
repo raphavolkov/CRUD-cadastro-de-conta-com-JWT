@@ -1,5 +1,6 @@
 import hashlib
 import os
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
@@ -55,7 +56,7 @@ def create_access_token(
         else datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
 
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire, "type": "access", "jti": str(uuid.uuid4())})
 
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -74,7 +75,7 @@ def create_refresh_token(
         else datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     )
 
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update({"exp": expire, "type": "refresh", "jti": str(uuid.uuid4())})
 
     encoded_jwt = jwt.encode(
         to_encode,

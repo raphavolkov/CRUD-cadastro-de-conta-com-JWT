@@ -298,8 +298,9 @@ def refresh_tokens(request: Request, data: RefreshRequest, db: DbSession) -> Tok
 
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         db.rollback()
+        print("ERRO REAL DO BANCO:", repr(exc.orig))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao renovar os tokens.",
