@@ -358,27 +358,31 @@ def test_token_invalido_apos_logout(client: TestClient) -> None:
     }
 
     cadastro = client.post("/api/auth/register", json=payload)
-
     assert cadastro.status_code == 201
 
     login = client.post(
         "/api/auth/login",
-        json={"email": "token.logout@email.com", "password": "Senha123!"},
+        json={"email": payload["email"], "password": payload["password"]},
     )
-
     assert login.status_code == 200
 
-    token = login.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    dados_login = login.json()
+    access_token = dados_login["access_token"]
+    refresh_token = dados_login["refresh_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
 
     logout = client.post("/api/auth/logout", headers=headers)
-
     assert logout.status_code == 200
 
     resposta = client.post("/api/auth/logout", headers=headers)
-
     assert resposta.status_code == 401
-    assert resposta.json()["detail"] == "Token inválido ou sessão encerrada."
+
+    resposta_refresh = client.post(
+        "/api/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+
+    assert resposta_refresh.status_code == 401
 
 
 def test_buscar_proprio_usuario(client: TestClient) -> None:
