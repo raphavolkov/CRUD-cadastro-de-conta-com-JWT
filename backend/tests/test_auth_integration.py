@@ -1464,3 +1464,51 @@ def test_refresh_token_revogado(
     )
 
     assert response.status_code == 401
+
+
+def test_refresh_token_com_sessao_expirada(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.models import AccessLog
+
+    cadastro = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Teste",
+            "email": "refresh.sessao.expirada@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "refresh.sessao.expirada@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+
+    from app.security import decode_refresh_token
+
+    _, session_id = decode_refresh_token(refresh_token)
+
+    sessao = db.query(AccessLog).filter(AccessLog.session_id == session_id).first()
+    assert sessao is not None
+
+    sessao.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+    db.commit()
+
+    response = client.post(
+        "/api/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Sessão expirada"
