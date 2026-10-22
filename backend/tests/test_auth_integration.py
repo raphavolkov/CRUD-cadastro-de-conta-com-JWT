@@ -1255,3 +1255,33 @@ def test_refresh_token_invalido(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Refresh token inválido ou expirado"
+
+
+def test_refresh_token_com_assinatura_invalida(client: TestClient) -> None:
+    payload = {
+        "name": "Raphao gostosao",
+        "email": "raphao@gostosao.com",
+        "password": "Gostosa123",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+
+    partes = refresh_token.split(".")
+    assinatura = partes[2]
+    caractere = "A" if assinatura[0] != "A" else "B"
+    partes[2] = caractere + assinatura[1:]
+    token_adulterado = ".".join(partes)
+
+    response = client.post(
+        "/api/auth/refresh", json={"refresh_token": token_adulterado}
+    )
+    assert response.status_code == 401
