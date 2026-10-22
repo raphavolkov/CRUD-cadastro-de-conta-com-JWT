@@ -1633,3 +1633,42 @@ def test_decode_refresh_token_com_tipo_incorreto() -> None:
         match="Refresh token inválido ou expirado",
     ):
         decode_refresh_token(token)
+
+
+def test_refresh_token_erro_integridade_no_commit(
+    client: TestClient,
+    db: Session,
+) -> None:
+    payload = {
+        "name": "Raphael",
+        "email": "integridade@teste.com",
+        "password": "Raphael123",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+
+    with patch.object(
+        db,
+        "commit",
+        side_effect=IntegrityError(
+            "statement",
+            {},
+            Exception("erro simulado"),
+        ),
+    ):
+        response = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Erro ao renovar os tokens."

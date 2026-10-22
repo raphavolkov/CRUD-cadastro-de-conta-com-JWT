@@ -93,3 +93,72 @@ def test_decode_access_token_rejeita_refresh_token():
 
     with pytest.raises(ValueError, match="Token inválido ou expirado"):
         decode_access_token(token)
+
+
+def test_decode_access_token_com_tipo_incorreto() -> None:
+    token = jwt.encode(
+        {
+            "sub": "usuario-teste",
+            "session_id": "sessao-teste",
+            "type": "outro",
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Token inv",
+    ):
+        decode_access_token(token)
+
+
+def test_decode_refresh_token_sem_sub():
+    token = jwt.encode(
+        {
+            "session_id": "sessao-teste",
+            "type": "refresh",
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    from app.security import decode_refresh_token
+
+    with pytest.raises(ValueError, match="Refresh token"):
+        decode_refresh_token(token)
+
+
+def test_decode_refresh_token_sem_session_id():
+    token = jwt.encode(
+        {
+            "sub": "usuario-teste",
+            "type": "refresh",
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    from app.security import decode_refresh_token
+
+    with pytest.raises(ValueError, match="Refresh token"):
+        decode_refresh_token(token)
+
+
+def test_decode_access_token_com_session_id_invalido():
+    token = jwt.encode(
+        {
+            "sub": "usuario-teste",
+            "session_id": 123,
+            "type": "access",
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    with pytest.raises(ValueError, match="Token inv"):
+        decode_access_token(token)
