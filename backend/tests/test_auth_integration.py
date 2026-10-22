@@ -1245,3 +1245,13 @@ def test_refresh_token_reutilizado_apos_rotacao(client: TestClient) -> None:
         "/api/auth/refresh", json={"refresh_token": novo_refresh_token}
     )
     assert terceira_renovacao.status_code == 200
+
+
+def test_refresh_token_invalido(client: TestClient) -> None:
+    response = client.post(
+        "/api/auth/refresh",
+        json={"refresh_token": "token_invalido"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Refresh token inválido ou expirado"
