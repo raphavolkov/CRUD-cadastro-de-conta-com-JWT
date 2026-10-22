@@ -1336,3 +1336,84 @@ def test_decode_refresh_token_expirado() -> None:
 
     with pytest.raises(ValueError, match="Refresh token inválido ou expirado"):
         decode_refresh_token(token)
+
+
+def test_refresh_token_com_access_token(client: TestClient) -> None:
+    payload = {
+        "name": "Teste",
+        "email": "refresh.access@email.com",
+        "password": "Senha123!",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": payload["email"],
+            "password": payload["password"],
+        },
+    )
+    assert login.status_code == 200
+
+    access_token = login.json()["access_token"]
+
+    response = client.post(
+        "/api/auth/refresh",
+        json={"refresh_token": access_token},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Refresh token inválido ou expirado"
+
+
+def test_refresh_token_de_outro_usuario(client: TestClient) -> None:
+    usuario_a = {
+        "name": "Usuario A",
+        "email": "usuario.a@email.com",
+        "password": "Senha123!",
+    }
+    usuario_b = {
+        "name": "Usuario B",
+        "email": "usuario.b@email.com",
+        "password": "Senha123!",
+    }
+
+    cadastro_a = client.post("/api/auth/register", json=usuario_a)
+    cadastro_b = client.post("/api/auth/register", json=usuario_b)
+
+    assert cadastro_a.status_code == 201
+    assert cadastro_b.status_code == 201
+
+    login_a = client.post(
+        "/api/auth/login",
+        json={
+            "email": usuario_a["email"],
+            "password": usuario_a["password"],
+        },
+    )
+    login_b = client.post(
+        "/api/auth/login",
+        json={
+            "email": usuario_b["email"],
+            "password": usuario_b["password"],
+        },
+    )
+
+    assert login_a.status_code == 200
+    assert login_b.status_code == 200
+
+    refresh_token_a = login_a.json()["refresh_token"]
+
+    response = client.post(
+        "/api/auth/refresh",
+        json={"refresh_token": refresh_token_a},
+    )
+
+    assert response.status_code == 200
+
+    dados = response.json()
+    assert "access_token" in dados
+    assert "refresh_token" in dados
+    assert dados["refresh_token"] != refresh_token_a
