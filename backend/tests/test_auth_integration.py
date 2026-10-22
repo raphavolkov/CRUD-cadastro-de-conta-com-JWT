@@ -1417,3 +1417,50 @@ def test_refresh_token_de_outro_usuario(client: TestClient) -> None:
     assert "access_token" in dados
     assert "refresh_token" in dados
     assert dados["refresh_token"] != refresh_token_a
+
+
+def test_refresh_token_revogado(
+    client: TestClient,
+    db: Session,
+) -> None:
+    import hashlib
+    from datetime import UTC, datetime
+
+    from app.models import RefreshToken
+
+    cadastro = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Teste",
+            "email": "refresh.revogado@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "refresh.revogado@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+    token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+
+    registro = (
+        db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
+    )
+    assert registro is not None
+
+    registro.revoked_at = datetime.now(UTC)
+    db.commit()
+
+    response = client.post(
+        "/api/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+
+    assert response.status_code == 401
