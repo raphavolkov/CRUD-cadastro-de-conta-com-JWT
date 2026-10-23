@@ -1,9 +1,10 @@
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -285,7 +286,25 @@ def refresh_tokens(request: Request, data: RefreshRequest, db: DbSession) -> Tok
 
     new_refresh_expires_at = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
-    refresh_token_record.revoked_at = now
+    result = cast(
+        CursorResult[Any],
+        db.execute(
+            update(RefreshToken)
+            .where(
+                RefreshToken.id == refresh_token_record.id,
+                RefreshToken.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+            .execution_options(synchronize_session=False)
+        ),
+    )
+
+    if result.rowcount != 1:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token inválido ou revogado.",
+        )
 
     new_refresh_token_record = RefreshToken(
         user_id=user_id,

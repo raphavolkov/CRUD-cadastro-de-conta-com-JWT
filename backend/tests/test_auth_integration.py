@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -1868,3 +1869,64 @@ def test_refresh_token_erro_integridade_no_commit(
 
     assert response.status_code == 500
     assert response.json()["detail"] == "Erro ao renovar os tokens."
+
+
+def test_refresh_token_update_condicional_entre_sessoes(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+    from typing import Any, cast
+
+    from app.database import Base
+    from app.models import RefreshToken
+    from sqlalchemy import create_engine, update
+    from sqlalchemy.engine import CursorResult
+    from sqlalchemy.orm import Session
+
+    database_path = tmp_path / "refresh_concorrencia.db"
+    engine = create_engine(f"sqlite:///{database_path.as_posix()}")
+
+    Base.metadata.create_all(bind=engine)
+
+    try:
+        with Session(engine) as db1, Session(engine) as db2:
+            token = RefreshToken(
+                user_id="usuario-teste",
+                session_id="sessao-teste",
+                token_hash="hash-teste-concorrencia",
+                expires_at=datetime.now(UTC).replace(tzinfo=None),
+            )
+            db1.add(token)
+            db1.commit()
+            token_id = token.id
+
+            agora = datetime.now(UTC).replace(tzinfo=None)
+
+            resultado1 = cast(
+                CursorResult[Any],
+                db1.execute(
+                    update(RefreshToken)
+                    .where(
+                        RefreshToken.id == token_id,
+                        RefreshToken.revoked_at.is_(None),
+                    )
+                    .values(revoked_at=agora)
+                ),
+            )
+            db1.commit()
+
+            resultado2 = cast(
+                CursorResult[Any],
+                db2.execute(
+                    update(RefreshToken)
+                    .where(
+                        RefreshToken.id == token_id,
+                        RefreshToken.revoked_at.is_(None),
+                    )
+                    .values(revoked_at=agora)
+                ),
+            )
+            db2.commit()
+
+            assert resultado1.rowcount == 1
+            assert resultado2.rowcount == 0
+    finally:
+        engine.dispose()
