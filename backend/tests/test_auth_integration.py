@@ -428,6 +428,41 @@ def test_buscar_proprio_usuario_com_token_invalido(client: TestClient) -> None:
     assert response.status_code == 401
 
 
+def test_buscar_proprio_usuario_com_token_expirado(
+    client: TestClient,
+) -> None:
+    from datetime import timedelta
+
+    from app.security import create_access_token
+
+    payload = {
+        "name": "Raphael",
+        "email": "token.expirado@email.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    token = create_access_token(
+        data={"sub": cadastro.json()["id"], "session_id": "sessao-inexistente"},
+        expires_delta=timedelta(seconds=-1),
+    )
+
+    response = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 401
+
+
 def test_buscar_proprio_usuario_apos_logout(client: TestClient) -> None:
     payload = {
         "name": "Raphael",
@@ -500,6 +535,36 @@ def test_buscar_logs_com_token_invalido(client: TestClient) -> None:
     response = client.get(
         "/api/auth/logs",
         headers={"Authorization": "Bearer token_invalido"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_buscar_logs_com_token_expirado(client: TestClient) -> None:
+    from datetime import timedelta
+
+    from app.security import create_access_token
+
+    payload = {
+        "name": "logs.expirado@email.com",
+        "email": "logs.expirado@email.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    token = create_access_token(
+        data={
+            "sub": cadastro.json()["id"],
+            "session_id": "sessao-inexistente",
+        },
+        expires_delta=timedelta(seconds=-1),
+    )
+
+    response = client.get(
+        "/api/auth/logs",
+        headers={"Authorization": f"Bearer {token}"},
     )
 
     assert response.status_code == 401
