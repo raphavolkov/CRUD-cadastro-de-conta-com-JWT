@@ -463,6 +463,36 @@ def test_buscar_proprio_usuario_com_token_expirado(
     assert response.status_code == 401
 
 
+def test_buscar_proprio_usuario_com_sessao_inexistente(
+    client: TestClient,
+) -> None:
+    from app.security import create_access_token
+
+    cadastro = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Teste",
+            "email": "sessao.inexistente@email.com",
+            "password": "Senha123456",
+        },
+    )
+    assert cadastro.status_code == 201
+
+    token = create_access_token(
+        data={
+            "sub": cadastro.json()["id"],
+            "session_id": "sessao-inexistente",
+        },
+    )
+
+    response = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 401
+
+
 def test_buscar_proprio_usuario_apos_logout(client: TestClient) -> None:
     payload = {
         "name": "Raphael",
