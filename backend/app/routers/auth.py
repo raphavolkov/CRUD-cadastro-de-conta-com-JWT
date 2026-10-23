@@ -331,7 +331,11 @@ def get_access_logs(
             detail="O limite deve estar entre 1 e 100.",
         )
 
-    query = select(User, AccessLog).join(AccessLog, AccessLog.user_id == User.id)
+    query = (
+        select(User, AccessLog)
+        .join(AccessLog, AccessLog.user_id == User.id)
+        .where(AccessLog.user_id == user_id)
+    )
 
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
 

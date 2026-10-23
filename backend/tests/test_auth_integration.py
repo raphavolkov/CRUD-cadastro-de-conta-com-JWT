@@ -932,7 +932,7 @@ def test_buscar_logs_de_multiplos_usuarios(client: TestClient) -> None:
     emails = [log["email"] for log in data["items"]]
 
     assert usuario1["email"] in emails
-    assert usuario2["email"] in emails
+    assert usuario2["email"] not in emails
 
 
 def test_buscar_logs_com_pagina_negativa(client: TestClient) -> None:
