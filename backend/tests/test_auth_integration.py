@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from app.main import app
-from app.models import User
+from app.models import AccessLog, User
 from app.security import get_current_session
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
@@ -519,6 +519,54 @@ def test_buscar_proprio_usuario_apos_logout(client: TestClient) -> None:
     assert logout.status_code == 200
 
     response = client.get("/api/auth/me", headers=headers)
+
+    assert response.status_code == 401
+
+
+def test_buscar_proprio_usuario_com_sessao_revogada(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from datetime import UTC, datetime
+
+    from app.security import decode_access_token
+
+    payload = {
+        "name": "Teste",
+        "email": "sessao.revogada@email.com",
+        "password": "Senha123456",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    token = login.json()["access_token"]
+    user_id, session_id = decode_access_token(token)
+
+    sessao = (
+        db.query(AccessLog)
+        .filter(
+            AccessLog.session_id == session_id,
+            AccessLog.user_id == user_id,
+        )
+        .first()
+    )
+    assert sessao is not None
+    assert sessao.logout_at is None
+
+    sessao.logout_at = datetime.now(UTC)
+    db.commit()
+
+    response = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
 
     assert response.status_code == 401
 
