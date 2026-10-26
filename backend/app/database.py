@@ -1,11 +1,7 @@
-from pathlib import Path
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-DATABASE_PATH = DATA_DIR / "database.db"
+from .core.config import DATA_DIR, DATABASE_PATH
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 

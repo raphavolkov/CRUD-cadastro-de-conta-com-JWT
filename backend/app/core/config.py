@@ -1,6 +1,12 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DATA_DIR = BASE_DIR / "data"
+DATABASE_PATH = DATA_DIR / "database.db"
+DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 load_dotenv()
 
