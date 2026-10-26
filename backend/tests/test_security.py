@@ -17,12 +17,13 @@ def test_security_falha_sem_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SECRET_KEY", "")
 
     sys.modules.pop("app.security", None)
+    sys.modules.pop("app.core.config", None)
 
     with pytest.raises(
         RuntimeError,
         match="SECRET_KEY não configurada",
     ):
-        importlib.import_module("app.security")
+        importlib.import_module("app.core.config")
 
 
 def test_criar_token_com_validade_personalizada():

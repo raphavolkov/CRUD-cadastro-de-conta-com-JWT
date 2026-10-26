@@ -8,6 +8,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..core.config import REFRESH_TOKEN_EXPIRE_DAYS
 from ..database import get_db
 from ..limiter import rate_limit
 from ..models import AccessLog, RefreshToken, User
@@ -22,7 +23,6 @@ from ..schemas import (
     UserResponse,
 )
 from ..security import (
-    REFRESH_TOKEN_EXPIRE_DAYS,
     create_access_token,
     create_refresh_token,
     decode_refresh_token,
