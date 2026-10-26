@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -1873,7 +1874,7 @@ def test_refresh_token_erro_integridade_no_commit(
 
 def test_refresh_token_update_condicional_entre_sessoes(tmp_path: Path) -> None:
     from datetime import UTC, datetime
-    from typing import Any, cast
+    from typing import cast
 
     from app.database import Base
     from app.models import RefreshToken
@@ -1930,3 +1931,54 @@ def test_refresh_token_update_condicional_entre_sessoes(tmp_path: Path) -> None:
             assert resultado2.rowcount == 0
     finally:
         engine.dispose()
+
+
+def test_refresh_token_update_condicional_sem_linhas_afetadas(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from sqlalchemy.sql import Executable
+
+    payload = {
+        "name": "Raphael",
+        "email": "rowcount@teste.com",
+        "password": "Raphael123",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+    execute_original = db.execute
+
+    def execute_simulado(
+        statement: Executable,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        if getattr(statement, "is_update", False):
+            tabela = getattr(statement, "table", None)
+
+            if tabela is not None and tabela.name == "refresh_tokens":
+
+                class ResultadoSimulado:
+                    rowcount = 0
+
+                return ResultadoSimulado()
+
+        return execute_original(statement, *args, **kwargs)
+
+    with patch.object(db, "execute", side_effect=execute_simulado):
+        response = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Refresh token inválido ou revogado."
