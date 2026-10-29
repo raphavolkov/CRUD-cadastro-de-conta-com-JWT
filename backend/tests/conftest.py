@@ -2,7 +2,6 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
-from app import models
 from app.database import Base, get_db
 from app.limiter import limiter
 from app.main import app

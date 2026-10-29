@@ -27,10 +27,9 @@ from ..security import (
     decode_refresh_token,
     get_current_session,
     get_current_user_id,
-    hash_password,
     hash_refresh_token,
 )
-from ..services.auth_service import login_user
+from ..services.auth_service import login_user, register_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -44,24 +43,7 @@ CurrentSession = Annotated[tuple[str, str], Depends(get_current_session)]
 )
 @rate_limit("5/minute")
 def register(request: Request, user_data: UserCreate, db: DbSession) -> UserResponse:
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email já cadastrado"
-        )
-
-    hashed_password = hash_password(user_data.password)
-
-    new_user = User(
-        name=user_data.name, email=user_data.email, password_hash=hashed_password
-    )
-
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    return new_user
+    return register_user(user_data, db)
 
 
 @router.post("/login", response_model=Token)

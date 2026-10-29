@@ -7,10 +7,11 @@ from sqlalchemy.orm import Session
 
 from ..core.config import REFRESH_TOKEN_EXPIRE_DAYS
 from ..models import AccessLog, RefreshToken, User
-from ..schemas import Token, UserLogin
+from ..schemas import Token, UserCreate, UserLogin, UserResponse
 from ..security import (
     create_access_token,
     create_refresh_token,
+    hash_password,
     hash_refresh_token,
     verify_password,
 )
@@ -96,3 +97,27 @@ def login_user(user_data: UserLogin, db: Session) -> Token:
         refresh_token=refresh_token,
         token_type="bearer",
     )
+
+
+def register_user(user_data: UserCreate, db: Session) -> UserResponse:
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email já cadastrado",
+        )
+
+    hashed_password = hash_password(user_data.password)
+
+    new_user = User(
+        name=user_data.name,
+        email=user_data.email,
+        password_hash=hashed_password,
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
