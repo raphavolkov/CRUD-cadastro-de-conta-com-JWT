@@ -21,7 +21,13 @@ from ..security import (
     get_current_session,
     get_current_user_id,
 )
-from ..services.auth_service import login_user, logout_user, refresh_user, register_user
+from ..services.auth_service import (
+    get_user_by_id,
+    login_user,
+    logout_user,
+    refresh_user,
+    register_user,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -46,14 +52,7 @@ def login(request: Request, user_data: UserLogin, db: DbSession) -> Token:
 
 @router.get("/me", response_model=UserResponse)
 def get_me(user_id: CurrentUserId, db: DbSession):
-    user = db.query(User).filter(User.id == user_id).first()
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado."
-        )
-
-    return user
+    return get_user_by_id(user_id, db)
 
 
 @router.post("/logout", response_model=MessageResponse)

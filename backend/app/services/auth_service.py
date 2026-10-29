@@ -285,3 +285,14 @@ def refresh_user(data: RefreshRequest, db: Session) -> Token:
         refresh_token=new_refresh_token,
         token_type="bearer",
     )
+
+
+def get_user_by_id(user_id: str, db: Session) -> User:
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado."
+        )
+
+    return user
