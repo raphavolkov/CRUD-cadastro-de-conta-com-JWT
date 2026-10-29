@@ -1,16 +1,12 @@
-from datetime import UTC, datetime, timedelta
-from typing import Annotated, Any, cast
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import func, select, update
-from sqlalchemy.engine import CursorResult
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..core.config import REFRESH_TOKEN_EXPIRE_DAYS
 from ..database import get_db
 from ..limiter import rate_limit
-from ..models import AccessLog, RefreshToken, User
+from ..models import AccessLog, User
 from ..schemas import (
     AccessLogPaginationResponse,
     AccessLogResponse,
@@ -22,14 +18,10 @@ from ..schemas import (
     UserResponse,
 )
 from ..security import (
-    create_access_token,
-    create_refresh_token,
-    decode_refresh_token,
     get_current_session,
     get_current_user_id,
-    hash_refresh_token,
 )
-from ..services.auth_service import login_user, logout_user, register_user
+from ..services.auth_service import login_user, logout_user, refresh_user, register_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -73,130 +65,7 @@ def logout(session: CurrentSession, db: DbSession) -> MessageResponse:
 @router.post("/refresh", response_model=Token)
 @rate_limit("5/minute")
 def refresh_tokens(request: Request, data: RefreshRequest, db: DbSession) -> Token:
-    try:
-        user_id, session_id = decode_refresh_token(data.refresh_token)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token inválido ou expirado",
-        ) from None
-
-    now = datetime.now(UTC)
-
-    token_hash = hash_refresh_token(data.refresh_token)
-
-    refresh_token_record = (
-        db.query(RefreshToken)
-        .filter(
-            RefreshToken.token_hash == token_hash,
-            RefreshToken.user_id == user_id,
-            RefreshToken.session_id == session_id,
-            RefreshToken.revoked_at.is_(None),
-        )
-        .first()
-    )
-
-    if not refresh_token_record:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token inválido ou revogado.",
-        )
-
-    expires_at = refresh_token_record.expires_at
-
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=UTC)
-
-    if expires_at <= now:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expirado"
-        )
-
-    active_session = (
-        db.query(AccessLog)
-        .filter(
-            AccessLog.session_id == session_id,
-            AccessLog.user_id == user_id,
-            AccessLog.logout_at.is_(None),
-        )
-        .first()
-    )
-
-    if not active_session:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sessão encerrada ou inválida",
-        )
-
-    session_expires_at = active_session.expires_at
-
-    if session_expires_at.tzinfo is None:
-        session_expires_at = session_expires_at.replace(tzinfo=UTC)
-
-    if session_expires_at <= now:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada"
-        )
-
-    new_access_token = create_access_token(
-        data={
-            "sub": user_id,
-            "session_id": session_id,
-        }
-    )
-
-    new_refresh_token = create_refresh_token(
-        data={
-            "sub": user_id,
-            "session_id": session_id,
-        }
-    )
-
-    new_refresh_expires_at = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-
-    result = cast(
-        CursorResult[Any],
-        db.execute(
-            update(RefreshToken)
-            .where(
-                RefreshToken.id == refresh_token_record.id,
-                RefreshToken.revoked_at.is_(None),
-            )
-            .values(revoked_at=now)
-            .execution_options(synchronize_session=False)
-        ),
-    )
-
-    if result.rowcount != 1:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token inválido ou revogado.",
-        )
-
-    new_refresh_token_record = RefreshToken(
-        user_id=user_id,
-        session_id=session_id,
-        token_hash=hash_refresh_token(new_refresh_token),
-        expires_at=new_refresh_expires_at,
-    )
-
-    db.add(new_refresh_token_record)
-
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao renovar os tokens.",
-        ) from None
-
-    return Token(
-        access_token=new_access_token,
-        refresh_token=new_refresh_token,
-        token_type="bearer",
-    )
+    return refresh_user(data, db)
 
 
 @router.get("/logs", response_model=AccessLogPaginationResponse)

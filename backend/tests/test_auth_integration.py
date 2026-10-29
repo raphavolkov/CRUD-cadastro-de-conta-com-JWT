@@ -1454,7 +1454,7 @@ def test_refresh_token_expirado(client: TestClient) -> None:
 
     refresh_token = login.json()["refresh_token"]
 
-    with patch("app.routers.auth.decode_refresh_token") as mock_decode:
+    with patch("app.services.auth_service.decode_refresh_token") as mock_decode:
         mock_decode.side_effect = ValueError("Refresh token inválido ou expirado")
 
         response = client.post(
