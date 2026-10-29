@@ -29,7 +29,7 @@ from ..security import (
     get_current_user_id,
     hash_refresh_token,
 )
-from ..services.auth_service import login_user, register_user
+from ..services.auth_service import login_user, logout_user, register_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -65,41 +65,9 @@ def get_me(user_id: CurrentUserId, db: DbSession):
 
 
 @router.post("/logout", response_model=MessageResponse)
-def logout(
-    session: CurrentSession,
-    db: DbSession,
-):
+def logout(session: CurrentSession, db: DbSession) -> MessageResponse:
     user_id, session_id = session
-
-    access_log = (
-        db.query(AccessLog)
-        .filter(
-            AccessLog.session_id == session_id,
-            AccessLog.user_id == user_id,
-            AccessLog.logout_at.is_(None),
-        )
-        .first()
-    )
-
-    if not access_log:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Nenhuma sessão ativa encontrada",
-        )
-
-    now = datetime.now(UTC)
-
-    access_log.logout_at = now
-
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == user_id,
-        RefreshToken.session_id == session_id,
-        RefreshToken.revoked_at.is_(None),
-    ).update({RefreshToken.revoked_at: now}, synchronize_session=False)
-
-    db.commit()
-
-    return {"message": "Logout realizado com sucesso"}
+    return logout_user(user_id, session_id, db)
 
 
 @router.post("/refresh", response_model=Token)

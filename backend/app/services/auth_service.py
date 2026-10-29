@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..core.config import REFRESH_TOKEN_EXPIRE_DAYS
 from ..models import AccessLog, RefreshToken, User
-from ..schemas import Token, UserCreate, UserLogin, UserResponse
+from ..schemas import MessageResponse, Token, UserCreate, UserLogin, UserResponse
 from ..security import (
     create_access_token,
     create_refresh_token,
@@ -121,3 +121,34 @@ def register_user(user_data: UserCreate, db: Session) -> UserResponse:
     db.refresh(new_user)
 
     return new_user
+
+
+def logout_user(user_id: str, session_id: str, db: Session) -> MessageResponse:
+    access_log = (
+        db.query(AccessLog)
+        .filter(
+            AccessLog.session_id == session_id,
+            AccessLog.user_id == user_id,
+            AccessLog.logout_at.is_(None),
+        )
+        .first()
+    )
+
+    if not access_log:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhuma sessão ativa encontrada",
+        )
+
+    now = datetime.now(UTC)
+    access_log.logout_at = now
+
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user_id,
+        RefreshToken.session_id == session_id,
+        RefreshToken.revoked_at.is_(None),
+    ).update({RefreshToken.revoked_at: now}, synchronize_session=False)
+
+    db.commit()
+
+    return MessageResponse(message="Logout realizado com sucesso")
