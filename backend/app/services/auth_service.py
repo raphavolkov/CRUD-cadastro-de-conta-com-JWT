@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
 from fastapi import HTTPException, status
-from sqlalchemy import update
+from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from ..core.config import REFRESH_TOKEN_EXPIRE_DAYS
 from ..models import AccessLog, RefreshToken, User
 from ..schemas import (
+    AccessLogPaginationResponse,
+    AccessLogResponse,
     MessageResponse,
     RefreshRequest,
     Token,
@@ -296,3 +298,55 @@ def get_user_by_id(user_id: str, db: Session) -> User:
         )
 
     return user
+
+
+def get_access_logs(
+    user_id: str,
+    db: Session,
+    page: int = 1,
+    limit: int = 10,
+) -> AccessLogPaginationResponse:
+    if page < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A página deve ser maior ou igual a 1.",
+        )
+
+    if limit < 1 or limit > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O limite deve estar entre 1 e 100.",
+        )
+
+    query = (
+        select(User, AccessLog)
+        .join(AccessLog, AccessLog.user_id == User.id)
+        .where(AccessLog.user_id == user_id)
+    )
+
+    total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    offset = (page - 1) * limit
+
+    logs = db.execute(
+        query.order_by(AccessLog.login_at.desc()).offset(offset).limit(limit)
+    )
+
+    items = [
+        AccessLogResponse(
+            name=user.name,
+            email=user.email,
+            login_at=access_log.login_at,
+            logout_at=access_log.logout_at,
+        )
+        for user, access_log in logs
+    ]
+
+    total_pages = (total + limit - 1) // limit
+
+    return AccessLogPaginationResponse(
+        items=items,
+        page=page,
+        limit=limit,
+        total=total,
+        pages=total_pages,
+    )

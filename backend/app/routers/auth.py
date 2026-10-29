@@ -1,15 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..limiter import rate_limit
-from ..models import AccessLog, User
 from ..schemas import (
     AccessLogPaginationResponse,
-    AccessLogResponse,
     MessageResponse,
     RefreshRequest,
     Token,
@@ -20,6 +17,9 @@ from ..schemas import (
 from ..security import (
     get_current_session,
     get_current_user_id,
+)
+from ..services.auth_service import (
+    get_access_logs as get_access_logs_service,
 )
 from ..services.auth_service import (
     get_user_by_id,
@@ -74,44 +74,4 @@ def get_access_logs(
     page: int = 1,
     limit: int = 10,
 ) -> AccessLogPaginationResponse:
-    if page < 1:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A página deve ser maior ou igual a 1.",
-        )
-
-    if limit < 1 or limit > 100:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="O limite deve estar entre 1 e 100.",
-        )
-
-    query = (
-        select(User, AccessLog)
-        .join(AccessLog, AccessLog.user_id == User.id)
-        .where(AccessLog.user_id == user_id)
-    )
-
-    total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-
-    offset = (page - 1) * limit
-
-    logs = db.execute(
-        query.order_by(AccessLog.login_at.desc()).offset(offset).limit(limit)
-    )
-
-    items = [
-        AccessLogResponse(
-            name=user.name,
-            email=user.email,
-            login_at=access_log.login_at,
-            logout_at=access_log.logout_at,
-        )
-        for user, access_log in logs
-    ]
-
-    total_pages = (total + limit - 1) // limit
-
-    return AccessLogPaginationResponse(
-        items=items, page=page, limit=limit, total=total, pages=total_pages
-    )
+    return get_access_logs_service(user_id, db, page, limit)
