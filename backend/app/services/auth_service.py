@@ -1,15 +1,27 @@
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any, cast
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select, update
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..core.config import REFRESH_TOKEN_EXPIRE_DAYS
 from ..models import AccessLog, RefreshToken, User
+from ..repositories.auth_repository import (
+    close_expired_sessions,
+    close_session,
+    create_refresh_token_record,
+    create_session_records,
+    create_user,
+    get_access_logs_paginated,
+    get_active_session,
+    get_active_session_by_id,
+    get_refresh_token,
+    get_user_by_email,
+    revoke_refresh_token,
+    revoke_refresh_tokens,
+)
+from ..repositories.auth_repository import get_user_by_id as get_user_by_id_repository
 from ..schemas import (
     AccessLogPaginationResponse,
     AccessLogResponse,
@@ -31,7 +43,7 @@ from ..security import (
 
 
 def login_user(user_data: UserLogin, db: Session) -> Token:
-    user = db.query(User).filter(User.email == user_data.email).first()
+    user = get_user_by_email(db, user_data.email)
 
     if not user:
         raise HTTPException(
@@ -45,23 +57,11 @@ def login_user(user_data: UserLogin, db: Session) -> Token:
 
     now = datetime.now(UTC)
 
-    db.query(AccessLog).filter(
-        AccessLog.user_id == user.id,
-        AccessLog.logout_at.is_(None),
-        AccessLog.expires_at <= now,
-    ).update({AccessLog.logout_at: now}, synchronize_session=False)
+    close_expired_sessions(db, user.id, now)
 
     db.commit()
 
-    active_session = (
-        db.query(AccessLog)
-        .filter(
-            AccessLog.user_id == user.id,
-            AccessLog.logout_at.is_(None),
-            AccessLog.expires_at > now,
-        )
-        .first()
-    )
+    active_session = get_active_session(db, user.id, now)
 
     if active_session:
         raise HTTPException(
@@ -93,10 +93,8 @@ def login_user(user_data: UserLogin, db: Session) -> Token:
         expires_at=expires_at,
     )
 
-    db.add(access_log)
-    db.add(refresh_token_record)
-
     try:
+        create_session_records(db, access_log, refresh_token_record)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -113,8 +111,7 @@ def login_user(user_data: UserLogin, db: Session) -> Token:
 
 
 def register_user(user_data: UserCreate, db: Session) -> UserResponse:
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-
+    existing_user = get_user_by_email(db, user_data.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -129,23 +126,14 @@ def register_user(user_data: UserCreate, db: Session) -> UserResponse:
         password_hash=hashed_password,
     )
 
-    db.add(new_user)
+    created_user = create_user(db, new_user)
     db.commit()
-    db.refresh(new_user)
 
-    return new_user
+    return created_user
 
 
 def logout_user(user_id: str, session_id: str, db: Session) -> MessageResponse:
-    access_log = (
-        db.query(AccessLog)
-        .filter(
-            AccessLog.session_id == session_id,
-            AccessLog.user_id == user_id,
-            AccessLog.logout_at.is_(None),
-        )
-        .first()
-    )
+    access_log = get_active_session_by_id(db, user_id, session_id)
 
     if not access_log:
         raise HTTPException(
@@ -154,13 +142,9 @@ def logout_user(user_id: str, session_id: str, db: Session) -> MessageResponse:
         )
 
     now = datetime.now(UTC)
-    access_log.logout_at = now
+    close_session(db, access_log, now)
 
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == user_id,
-        RefreshToken.session_id == session_id,
-        RefreshToken.revoked_at.is_(None),
-    ).update({RefreshToken.revoked_at: now}, synchronize_session=False)
+    revoke_refresh_tokens(db, user_id, session_id, now)
 
     db.commit()
 
@@ -179,24 +163,20 @@ def refresh_user(data: RefreshRequest, db: Session) -> Token:
     now = datetime.now(UTC)
     token_hash = hash_refresh_token(data.refresh_token)
 
-    refresh_token_record = (
-        db.query(RefreshToken)
-        .filter(
-            RefreshToken.token_hash == token_hash,
-            RefreshToken.user_id == user_id,
-            RefreshToken.session_id == session_id,
-            RefreshToken.revoked_at.is_(None),
-        )
-        .first()
+    stored_token = get_refresh_token(
+        db,
+        token_hash,
+        user_id,
+        session_id,
     )
 
-    if not refresh_token_record:
+    if not stored_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token inválido ou revogado.",
         )
 
-    expires_at = refresh_token_record.expires_at
+    expires_at = stored_token.expires_at
 
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=UTC)
@@ -207,15 +187,7 @@ def refresh_user(data: RefreshRequest, db: Session) -> Token:
             detail="Refresh token expirado",
         )
 
-    active_session = (
-        db.query(AccessLog)
-        .filter(
-            AccessLog.session_id == session_id,
-            AccessLog.user_id == user_id,
-            AccessLog.logout_at.is_(None),
-        )
-        .first()
-    )
+    active_session = get_active_session_by_id(db, user_id, session_id)
 
     if not active_session:
         raise HTTPException(
@@ -244,20 +216,9 @@ def refresh_user(data: RefreshRequest, db: Session) -> Token:
 
     new_refresh_expires_at = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
-    result = cast(
-        CursorResult[Any],
-        db.execute(
-            update(RefreshToken)
-            .where(
-                RefreshToken.id == refresh_token_record.id,
-                RefreshToken.revoked_at.is_(None),
-            )
-            .values(revoked_at=now)
-            .execution_options(synchronize_session=False)
-        ),
-    )
+    rowcount = revoke_refresh_token(db, stored_token.id, now)
 
-    if result.rowcount != 1:
+    if rowcount != 1:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -271,9 +232,8 @@ def refresh_user(data: RefreshRequest, db: Session) -> Token:
         expires_at=new_refresh_expires_at,
     )
 
-    db.add(new_refresh_token_record)
-
     try:
+        create_refresh_token_record(db, new_refresh_token_record)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -290,7 +250,7 @@ def refresh_user(data: RefreshRequest, db: Session) -> Token:
 
 
 def get_user_by_id(user_id: str, db: Session) -> User:
-    user = db.query(User).filter(User.id == user_id).first()
+    user = get_user_by_id_repository(db, user_id)
 
     if not user:
         raise HTTPException(
@@ -318,17 +278,13 @@ def get_access_logs(
             detail="O limite deve estar entre 1 e 100.",
         )
 
-    query = (
-        select(User, AccessLog)
-        .join(AccessLog, AccessLog.user_id == User.id)
-        .where(AccessLog.user_id == user_id)
-    )
-
-    total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     offset = (page - 1) * limit
 
-    logs = db.execute(
-        query.order_by(AccessLog.login_at.desc()).offset(offset).limit(limit)
+    total, logs = get_access_logs_paginated(
+        db,
+        user_id,
+        offset,
+        limit,
     )
 
     items = [
