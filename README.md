@@ -60,21 +60,26 @@ Projeto Login/
 │
 ├── backend/
 │   ├── alembic/
-│   │   └── versions/
+│   │   ├── versions/
+│   │   │   ├── 573772928157_add_session_fields_and_active_session_.py
+│   │   │   ├── 6c82caf2057c_add_refresh_tokens_table.py
+│   │   │   ├── 814b28e6e84f_torna_expiracao_da_sessao_obrigatoria.py
+│   │   │   └── dcb2d04744a5_initial_schema.py
+│   │   ├── README
+│   │   ├── env.py
+│   │   └── script.py.mako
 │   │
 │   ├── app/
 │   │   ├── core/
 │   │   │   └── config.py
-│   │   │
 │   │   ├── repositories/
+│   │   │   ├── __init__.py
 │   │   │   └── auth_repository.py
-│   │   │
 │   │   ├── routers/
+│   │   │   ├── __init__.py
 │   │   │   └── auth.py
-│   │   │
 │   │   ├── services/
 │   │   │   └── auth_service.py
-│   │   │
 │   │   ├── database.py
 │   │   ├── limiter.py
 │   │   ├── main.py
@@ -91,20 +96,22 @@ Projeto Login/
 │   │
 │   ├── .env.example
 │   ├── alembic.ini
+│   ├── pyproject.toml
 │   ├── pytest.ini
+│   ├── requirements-dev.txt
 │   └── requirements.txt
 │
 ├── frontend/
 │   ├── css/
-│   ├── imgs/
+│   │   └── style.css
 │   ├── pages/
+│   │   ├── dashboard.html
 │   │   ├── index.html
 │   │   ├── login.html
-│   │   ├── register.html
-│   │   └── dashboard.html
-│   │
-│   └── scripts/
-│       └── app.js
+│   │   └── register.html
+│   ├── scripts/
+│   │   └── app.js
+│   └── .prettierrc
 │
 ├── .gitignore
 └── README.md
