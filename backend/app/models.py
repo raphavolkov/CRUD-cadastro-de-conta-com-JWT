@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, text
+from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -14,11 +14,14 @@ class User(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
-    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC), nullable=False
     )
+
+    __table_args__ = (UniqueConstraint("email", name="uq_users_email"),)
 
 
 class AccessLog(Base):
