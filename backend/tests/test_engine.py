@@ -1,9 +1,10 @@
 from unittest.mock import MagicMock
 
 import pytest
-from app import database, models
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
+
+from app import database, models
 
 
 def test_database_session(db: Session):
@@ -12,8 +13,8 @@ def test_database_session(db: Session):
 
 def test_criar_usuario(db: Session):
     usuario = models.User(
-        name="Raphael",
-        email="raphael@teste.com",
+        name="teste",
+        email="teste@teste.com",
         password_hash="senha_hash",
     )
 

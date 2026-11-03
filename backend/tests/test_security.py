@@ -3,6 +3,8 @@ import sys
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from jose import jwt
+
 from app.security import (
     ALGORITHM,
     SECRET_KEY,
@@ -10,7 +12,6 @@ from app.security import (
     create_refresh_token,
     decode_access_token,
 )
-from jose import jwt
 
 
 def test_security_falha_sem_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:

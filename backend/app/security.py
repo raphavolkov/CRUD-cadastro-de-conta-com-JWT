@@ -142,7 +142,7 @@ def get_current_session(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido ou sessão encerrada.",
-        )
+        ) from None
 
 
 def get_current_user_id(

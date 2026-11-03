@@ -3,12 +3,13 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from app.main import app
-from app.models import AccessLog, User
-from app.security import get_current_session
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+from app.main import app
+from app.models import AccessLog, User
+from app.security import get_current_session
 
 
 def test_rota_raiz(client: TestClient) -> None:
@@ -23,8 +24,8 @@ def test_cadastrar_usuario(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
         json={
-            "name": "Raphael",
-            "email": "raphael@teste.com",
+            "name": "teste",
+            "email": "teste@teste.com",
             "password": "senha123456",
         },
     )
@@ -33,8 +34,8 @@ def test_cadastrar_usuario(client: TestClient) -> None:
 
     data = response.json()
 
-    assert data["name"] == "Raphael"
-    assert data["email"] == "raphael@teste.com"
+    assert data["name"] == "teste"
+    assert data["email"] == "teste@teste.com"
     assert "id" in data
     assert "password_hash" not in data
 
@@ -42,7 +43,7 @@ def test_cadastrar_usuario(client: TestClient) -> None:
 def test_cadastrar_usuario_sem_nome(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
-        json={"email": "raphael@teste.com", "password": "Senha123456"},
+        json={"email": "teste@teste.com", "password": "Senha123456"},
     )
 
     assert response.status_code == 422
@@ -51,7 +52,7 @@ def test_cadastrar_usuario_sem_nome(client: TestClient) -> None:
 def test_cadastrar_usuario_sem_senha(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
-        json={"name": "Raphael", "email": "raphael@teste.com"},
+        json={"name": "teste", "email": "teste@teste.com"},
     )
 
     assert response.status_code == 422
@@ -59,8 +60,8 @@ def test_cadastrar_usuario_sem_senha(client: TestClient) -> None:
 
 def test_cadastrar_usuario_email_duplicado(client: TestClient) -> None:
     payload = {
-        "name": "Raphael",
-        "email": "raphael@teste.com",
+        "name": "teste",
+        "email": "teste@teste.com",
         "password": "teste12345678",
     }
 
@@ -74,7 +75,7 @@ def test_cadastrar_usuario_email_duplicado(client: TestClient) -> None:
 def test_cadastrar_usuario_com_email_invalido(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
-        json={"name": "Raphael", "email": "email_invalido", "senha": "Senha123456"},
+        json={"name": "teste", "email": "email_invalido", "senha": "Senha123456"},
     )
 
     assert response.status_code == 422
@@ -84,8 +85,8 @@ def test_cadastrar_usuario_com_senha_curta(client: TestClient) -> None:
     response = client.post(
         "/api/auth/register",
         json={
-            "name": "Raphael",
-            "email": "raphael@teste.com",
+            "name": "teste",
+            "email": "teste@teste.com",
             "password": "123",
         },
     )
@@ -115,8 +116,8 @@ def test_login_sucesso(client: TestClient) -> None:
     cadastro = client.post(
         "/api/auth/register",
         json={
-            "name": "Raphael",
-            "email": "raphael@teste.com",
+            "name": "teste",
+            "email": "teste@teste.com",
             "password": "senha123456",
         },
     )
@@ -125,7 +126,7 @@ def test_login_sucesso(client: TestClient) -> None:
 
     response = client.post(
         "/api/auth/login",
-        json={"email": "raphael@teste.com", "password": "senha123456"},
+        json={"email": "teste@teste.com", "password": "senha123456"},
     )
 
     assert response.status_code == 200
@@ -140,7 +141,7 @@ def test_login_sem_senha(client: TestClient) -> None:
     response = client.post(
         "/api/auth/login",
         json={
-            "email": "raphael@teste.com",
+            "email": "teste@teste.com",
         },
     )
 
@@ -149,8 +150,8 @@ def test_login_sem_senha(client: TestClient) -> None:
 
 def test_login_senha_invalida(client: TestClient) -> None:
     dados_usuario = {
-        "name": "Raphael",
-        "email": "raphael@teste.com",
+        "name": "teste",
+        "email": "teste@teste.com",
         "password": "senha123456",
     }
 
@@ -172,8 +173,8 @@ def test_login_senha_invalida(client: TestClient) -> None:
 
 def test_login_email_invalido(client: TestClient) -> None:
     dados_usuario = {
-        "name": "Raphael",
-        "email": "raphael@teste.com",
+        "name": "teste",
+        "email": "teste@teste.com",
         "password": "senha123456",
     }
 
@@ -184,7 +185,7 @@ def test_login_email_invalido(client: TestClient) -> None:
     response = client.post(
         "/api/auth/login",
         json={
-            "email": "raphaelemailerrado@teste.com",
+            "email": "testeemailerrado@teste.com",
             "password": dados_usuario["password"],
         },
     )
@@ -195,8 +196,8 @@ def test_login_email_invalido(client: TestClient) -> None:
 
 def test_login_com_sessao_ativa(client: TestClient) -> None:
     dados_usuario = {
-        "name": "Raphael",
-        "email": "raphael@teste.com",
+        "name": "teste",
+        "email": "teste@teste.com",
         "password": "senha123456",
     }
 
@@ -270,8 +271,8 @@ def test_login_sem_email(client: TestClient) -> None:
 
 def test_login_com_erro_ao_salvar_sessao(client: TestClient) -> None:
     payload = {
-        "name": "Raphael",
-        "email": "raphael@email.com",
+        "name": "teste",
+        "email": "teste@email.com",
         "password": "Senha123456",
     }
 
@@ -389,7 +390,7 @@ def test_token_invalido_apos_logout(client: TestClient) -> None:
 
 
 def test_buscar_proprio_usuario(client: TestClient) -> None:
-    payload = {"name": "Raphael", "email": "me@teste.com", "password": "Senha123456"}
+    payload = {"name": "teste", "email": "me@teste.com", "password": "Senha123456"}
 
     cadastro = client.post("/api/auth/register", json=payload)
 
@@ -438,7 +439,7 @@ def test_buscar_proprio_usuario_com_token_expirado(
     from app.security import create_access_token
 
     payload = {
-        "name": "Raphael",
+        "name": "teste",
         "email": "token.expirado@email.com",
         "password": "Senha123456",
     }
@@ -497,8 +498,8 @@ def test_buscar_proprio_usuario_com_sessao_inexistente(
 
 def test_buscar_proprio_usuario_apos_logout(client: TestClient) -> None:
     payload = {
-        "name": "Raphael",
-        "email": "raphael@email.com",
+        "name": "teste",
+        "email": "teste@email.com",
         "password": "Senha123456",
     }
 
@@ -575,8 +576,8 @@ def test_buscar_proprio_usuario_com_sessao_revogada(
 
 def test_buscar_proprio_usuario_nao_encontrado(client: TestClient, db: Session) -> None:
     payload = {
-        "name": "Raphael",
-        "email": "raphael@teste.com",
+        "name": "teste",
+        "email": "teste@teste.com",
         "password": "Senha123456",
     }
 
@@ -652,8 +653,8 @@ def test_buscar_logs_com_token_expirado(client: TestClient) -> None:
 
 def test_buscar_logs_com_pagina_invalida(client: TestClient) -> None:
     payload = {
-        "name": "Raphael",
-        "email": "raphael@email.com",
+        "name": "teste",
+        "email": "teste@email.com",
         "password": "Senha123456",
     }
 
@@ -748,8 +749,8 @@ def test_buscar_logs_com_limite_maximo(client: TestClient) -> None:
 
 def test_buscar_logs_com_limite_invalido(client: TestClient) -> None:
     payload = {
-        "name": "Raphael",
-        "email": "raphael@email.com",
+        "name": "teste",
+        "email": "teste@email.com",
         "password": "Senha123456",
     }
 
@@ -778,8 +779,8 @@ def test_buscar_logs_com_limite_invalido(client: TestClient) -> None:
 
 def test_buscar_logs_com_limite_acima_do_maximo(client: TestClient) -> None:
     payload = {
-        "name": "Raphael",
-        "email": "raphael@email.com",
+        "name": "teste",
+        "email": "teste@email.com",
         "password": "Senha123456",
     }
 
@@ -833,8 +834,8 @@ def test_buscar_logs_com_limite_negativo(client: TestClient) -> None:
 
 def test_buscar_logs_sucesso(client: TestClient) -> None:
     payload = {
-        "name": "Raphael",
-        "email": "raphael@email.com",
+        "name": "teste",
+        "email": "teste@email.com",
         "password": "Senha123456",
     }
 
@@ -1317,9 +1318,9 @@ def test_buscar_logs_total_consistente_entre_paginas(client: TestClient) -> None
 
 def test_refresh_token_sucesso(client: TestClient) -> None:
     payload = {
-        "name": "Raphael",
-        "email": "raphael@raphael.com",
-        "password": "Raphael123",
+        "name": "teste",
+        "email": "teste@teste.com",
+        "password": "teste123",
     }
 
     cadastro = client.post("/api/auth/register", json=payload)
@@ -1353,9 +1354,9 @@ def test_refresh_token_sucesso(client: TestClient) -> None:
 
 def test_refresh_token_reutilizado_apos_rotacao(client: TestClient) -> None:
     payload = {
-        "name": "raphael testudo",
-        "email": "raphael@raphael.com",
-        "password": "Raphael123",
+        "name": "teste testudo",
+        "email": "teste@teste.com",
+        "password": "teste123",
     }
 
     cadastro = client.post("/api/auth/register", json=payload)
@@ -1405,9 +1406,9 @@ def test_refresh_token_invalido(client: TestClient) -> None:
 
 def test_refresh_token_com_assinatura_invalida(client: TestClient) -> None:
     payload = {
-        "name": "Raphao gostosao",
-        "email": "raphao@gostosao.com",
-        "password": "Gostosa123",
+        "name": "Usuario Teste",
+        "email": "usuario@teste.com",
+        "password": "SenhaTeste123",
     }
 
     cadastro = client.post("/api/auth/register", json=payload)
@@ -1816,6 +1817,7 @@ def test_decode_refresh_token_com_tipo_incorreto() -> None:
     from datetime import timedelta
 
     import pytest
+
     from app.security import create_access_token, decode_refresh_token
 
     token = create_access_token(
@@ -1838,9 +1840,9 @@ def test_refresh_token_erro_integridade_no_commit(
     db: Session,
 ) -> None:
     payload = {
-        "name": "Raphael",
+        "name": "teste",
         "email": "integridade@teste.com",
-        "password": "Raphael123",
+        "password": "teste123",
     }
 
     cadastro = client.post("/api/auth/register", json=payload)
@@ -1876,11 +1878,12 @@ def test_refresh_token_update_condicional_entre_sessoes(tmp_path: Path) -> None:
     from datetime import UTC, datetime
     from typing import cast
 
-    from app.database import Base
-    from app.models import RefreshToken
     from sqlalchemy import create_engine, update
     from sqlalchemy.engine import CursorResult
     from sqlalchemy.orm import Session
+
+    from app.database import Base
+    from app.models import RefreshToken
 
     database_path = tmp_path / "refresh_concorrencia.db"
     engine = create_engine(f"sqlite:///{database_path.as_posix()}")
@@ -1940,9 +1943,9 @@ def test_refresh_token_update_condicional_sem_linhas_afetadas(
     from sqlalchemy.sql import Executable
 
     payload = {
-        "name": "Raphael",
+        "name": "teste",
         "email": "rowcount@teste.com",
-        "password": "Raphael123",
+        "password": "teste123",
     }
 
     cadastro = client.post("/api/auth/register", json=payload)

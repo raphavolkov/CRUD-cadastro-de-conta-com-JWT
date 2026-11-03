@@ -101,7 +101,7 @@ def login_user(user_data: UserLogin, db: Session) -> Token:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Essa conta já está conectada",
-        )
+        ) from None
 
     return Token(
         access_token=access_token,

@@ -2,12 +2,13 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
-from app.database import Base, get_db
-from app.limiter import limiter
-from app.main import app
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+
+from app.database import Base, get_db
+from app.limiter import limiter
+from app.main import app
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -24,7 +25,7 @@ TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_eng
 
 
 @pytest.fixture
-def db() -> Generator[Session, None, None]:
+def db() -> Generator[Session]:
     Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
 
@@ -38,8 +39,8 @@ def db() -> Generator[Session, None, None]:
 
 
 @pytest.fixture
-def client(db: Session) -> Generator[TestClient, None, None]:
-    def override_get_db() -> Generator[Session, None, None]:
+def client(db: Session) -> Generator[TestClient]:
+    def override_get_db() -> Generator[Session]:
         yield db
 
     app.dependency_overrides[get_db] = override_get_db

@@ -1,0 +1,17 @@
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+    "E",   # Erros de estilo do pycodestyle
+    "F",   # Erros detectados pelo Pyflakes
+    "I",   # Organização de imports
+    "UP",  # Atualizações modernas de sintaxe Python
+    "B",   # Possíveis bugs
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
