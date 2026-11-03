@@ -20,11 +20,49 @@ def test_security_falha_sem_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     sys.modules.pop("app.security", None)
     sys.modules.pop("app.core.config", None)
 
-    with pytest.raises(
-        RuntimeError,
-        match="SECRET_KEY não configurada",
-    ):
+    with pytest.raises(RuntimeError, match="SECRET_KEY inválida ou fraca"):
         importlib.import_module("app.core.config")
+
+
+def test_security_rejeita_secret_key_curta(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SECRET_KEY", "chave-curta")
+
+    sys.modules.pop("app.security", None)
+    sys.modules.pop("app.core.config", None)
+
+    with pytest.raises(RuntimeError, match="SECRET_KEY inválida ou fraca"):
+        importlib.import_module("app.core.config")
+
+
+def test_security_rejeita_secret_key_de_exemplo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "SECRET_KEY",
+        "coloque_uma_chave_secreta_forte_aqui",
+    )
+
+    sys.modules.pop("app.security", None)
+    sys.modules.pop("app.core.config", None)
+
+    with pytest.raises(RuntimeError, match="SECRET_KEY inválida ou fraca"):
+        importlib.import_module("app.core.config")
+
+
+def test_security_aceita_secret_key_valida(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    chave = "a" * 32
+    monkeypatch.setenv("SECRET_KEY", chave)
+
+    sys.modules.pop("app.security", None)
+    sys.modules.pop("app.core.config", None)
+
+    config = importlib.import_module("app.core.config")
+
+    assert config.SECRET_KEY == chave
 
 
 def test_criar_token_com_validade_personalizada():

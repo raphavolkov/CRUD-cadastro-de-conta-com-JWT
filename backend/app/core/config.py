@@ -10,12 +10,15 @@ DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 load_dotenv()
 
-secret_key = os.getenv("SECRET_KEY")
+secret_key = os.getenv("SECRET_KEY", "")
 
-if not secret_key:
-    raise RuntimeError("SECRET_KEY não configurada")
+if len(secret_key) < 32 or secret_key.startswith("coloque_"):
+    raise RuntimeError(
+        "SECRET_KEY inválida ou fraca. Gere uma chave com secrets.token_urlsafe(32)."
+    )
 
 SECRET_KEY: str = secret_key
+
 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
