@@ -230,7 +230,7 @@ Utilize a extensão Live Server para executar o arquivo:
 frontend/pages/index.html
 ```
 
-O frontend utiliza o endereço `http://127.0.0.1:5500` para comunicação com a API.
+O frontend é servido pelo Live Server em `http://127.0.0.1:5500` e utiliza a API disponível em `http://127.0.0.1:8000` para realizar as requisições HTTP.
 
 **Observação:** a configuração atual de comunicação e CORS utiliza endereços locais de desenvolvimento. Caso altere a porta do Live Server, será necessário atualizar as configurações correspondentes.
 
