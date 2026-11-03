@@ -202,3 +202,29 @@ def test_decode_access_token_com_session_id_invalido():
 
     with pytest.raises(ValueError, match="Token inv"):
         decode_access_token(token)
+
+
+@pytest.mark.parametrize("algorithm", ["HS256", "HS384", "HS512"])
+def test_security_aceita_algoritmos_permitidos(
+    monkeypatch: pytest.MonkeyPatch, algorithm: str
+) -> None:
+    monkeypatch.setenv("SECRET_KEY", "a" * 32)
+    monkeypatch.setenv("ALGORITHM", algorithm)
+
+    sys.modules.pop("app.security", None)
+    sys.modules.pop("app.core.config", None)
+
+    config = importlib.import_module("app.core.config")
+
+    assert config.ALGORITHM == algorithm
+
+
+def test_security_rejeita_algoritmo_invalido(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SECRET_KEY", "a" * 32)
+    monkeypatch.setenv("ALGORITHM", "none")
+
+    sys.modules.pop("app.security", None)
+    sys.modules.pop("app.core.config", None)
+
+    with pytest.raises(RuntimeError, match="ALGORITHM inválido"):
+        importlib.import_module("app.core.config")

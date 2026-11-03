@@ -19,7 +19,15 @@ if len(secret_key) < 32 or secret_key.startswith("coloque_"):
 
 SECRET_KEY: str = secret_key
 
+ALLOWED_ALGORITHMS = {"HS256", "HS384", "HS512"}
 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+if ALGORITHM not in ALLOWED_ALGORITHMS:
+    raise RuntimeError(
+        "ALGORITHM inválido. Valores permitidos: "
+        f"{', '.join(sorted(ALLOWED_ALGORITHMS))}"
+    )
+
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
