@@ -25,3 +25,13 @@ Thumbs.db
 
 # Bancos de dados locais e backups
 data/
+
+# Cobertura de testes
+.coverage
+.coverage.*
+htmlcov/
+
+# Caches de ferramentas
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
