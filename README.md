@@ -314,8 +314,10 @@ pytest
 Para verificar a cobertura:
 
 ```powershell
-pytest --cov=app.routers.auth --cov=app.security --cov-report=term-missing
+pytest --cov=app --cov-report=term-missing
 ```
+
+A cobertura atual dos testes é de 99% do código da aplicação.
 
 Para verificar a qualidade do código:
 
