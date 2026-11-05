@@ -17,11 +17,29 @@ def get_user_by_id(db: Session, user_id: str) -> User | None:
 
 
 def close_expired_sessions(db: Session, user_id: str, now: datetime) -> None:
+    expired_sessions = db.query(AccessLog.session_id).filter(
+        AccessLog.user_id == user_id,
+        AccessLog.logout_at.is_(None),
+        AccessLog.expires_at <= now,
+    )
+
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user_id,
+        RefreshToken.session_id.in_(expired_sessions),
+        RefreshToken.revoked_at.is_(None),
+    ).update(
+        {RefreshToken.revoked_at: now},
+        synchronize_session=False,
+    )
+
     db.query(AccessLog).filter(
         AccessLog.user_id == user_id,
         AccessLog.logout_at.is_(None),
         AccessLog.expires_at <= now,
-    ).update({AccessLog.logout_at: now}, synchronize_session=False)
+    ).update(
+        {AccessLog.logout_at: now},
+        synchronize_session=False,
+    )
 
 
 def get_active_session(db: Session, user_id: str, now: datetime) -> AccessLog | None:

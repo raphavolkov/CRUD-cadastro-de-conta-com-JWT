@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..core.config import REFRESH_TOKEN_EXPIRE_DAYS
@@ -216,15 +216,6 @@ def refresh_user(data: RefreshRequest, db: Session) -> Token:
 
     new_refresh_expires_at = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
-    rowcount = revoke_refresh_token(db, stored_token.id, now)
-
-    if rowcount != 1:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token inválido ou revogado.",
-        )
-
     new_refresh_token_record = RefreshToken(
         user_id=user_id,
         session_id=session_id,
@@ -233,9 +224,19 @@ def refresh_user(data: RefreshRequest, db: Session) -> Token:
     )
 
     try:
+        rowcount = revoke_refresh_token(db, stored_token.id, now)
+
+        if rowcount != 1:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token inválido ou revogado.",
+            )
+
         create_refresh_token_record(db, new_refresh_token_record)
         db.commit()
-    except IntegrityError:
+
+    except SQLAlchemyError:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

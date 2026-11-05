@@ -36,37 +36,35 @@
               <th scope="col" class="px-6 py-3">Data e Hora de Logout</th>
             </tr>
           </thead>
-          <tbody id="logs-table-body" class="divide-y divide-gray-200">
-            <tr class="hover:bg-gray-50">
-              <td class="px-6 py-4 font-medium text-gray-900">usuario@email.com</td>
-              <td class="px-6 py-4">12/09/2026 às 10:30:15</td>
-              <td class="px-6 py-4 text-gray-400">Sessão ativa</td>
-            </tr>
-            <tr class="hover:bg-gray-50">
-              <td class="px-6 py-4 font-medium text-gray-900">usuario@email.com</td>
-              <td class="px-6 py-4">11/09/2026 às 14:20:00</td>
-              <td class="px-6 py-4">11/09/2026 às 18:05:42</td>
+
+          <tbody id="logs-table-body" class="divide-y divide-gray-200" aria-live="polite">
+            <tr>
+              <td colspan="3" class="px-6 py-8 text-center text-gray-500">Carregando histórico...</td>
             </tr>
           </tbody>
-          <div class="mt-4 flex items-center justify-between">
-  <button
-    id="prev-page"
-    class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    Anterior
-  </button>
+        </table>
 
-  <div id="pagination-info" class="text-sm text-gray-600">
-    Página 1 de 1
-  </div>
+        <nav aria-label="Paginação do histórico de acessos" class="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+          <button
+            id="prev-page"
+            type="button"
+            disabled
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Anterior
+          </button>
 
-  <button
-    id="next-page"
-    class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    Próxima
-  </button>
-</div>
+          <div id="pagination-info" class="text-sm text-gray-600" aria-live="polite">Carregando...</div>
+
+          <button
+            id="next-page"
+            type="button"
+            disabled
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Próxima
+          </button>
+        </nav>
       </div>
     </main>
 

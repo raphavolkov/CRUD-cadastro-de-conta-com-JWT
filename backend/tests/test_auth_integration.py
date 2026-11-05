@@ -1616,16 +1616,21 @@ def test_refresh_token_com_sessao_expirada(
     client: TestClient,
     db: Session,
 ) -> None:
+    import hashlib
     from datetime import UTC, datetime, timedelta
 
-    from app.models import AccessLog
+    from app.models import AccessLog, RefreshToken
+    from app.security import decode_refresh_token
+
+    email = "refresh.sessao.expirada@email.com"
+    senha = "Senha123!"
 
     cadastro = client.post(
         "/api/auth/register",
         json={
             "name": "Teste",
-            "email": "refresh.sessao.expirada@email.com",
-            "password": "Senha123!",
+            "email": email,
+            "password": senha,
         },
     )
     assert cadastro.status_code == 201
@@ -1633,15 +1638,14 @@ def test_refresh_token_com_sessao_expirada(
     login = client.post(
         "/api/auth/login",
         json={
-            "email": "refresh.sessao.expirada@email.com",
-            "password": "Senha123!",
+            "email": email,
+            "password": senha,
         },
     )
     assert login.status_code == 200
 
     refresh_token = login.json()["refresh_token"]
-
-    from app.security import decode_refresh_token
+    token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
 
     _, session_id = decode_refresh_token(refresh_token)
 
@@ -1657,7 +1661,25 @@ def test_refresh_token_com_sessao_expirada(
     )
 
     assert response.status_code == 401
-    assert response.json()["detail"] == "Sessão expirada"
+
+    novo_login = client.post(
+        "/api/auth/login",
+        json={
+            "email": email,
+            "password": senha,
+        },
+    )
+    assert novo_login.status_code == 200
+
+    db.refresh(sessao)
+
+    registro_token = (
+        db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
+    )
+
+    assert registro_token is not None
+    assert registro_token.revoked_at is not None
+    assert sessao.logout_at is not None
 
 
 def test_refresh_token_expirado_no_banco(
@@ -1864,6 +1886,43 @@ def test_refresh_token_erro_integridade_no_commit(
             {},
             Exception("erro simulado"),
         ),
+    ):
+        response = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Erro ao renovar os tokens."
+
+
+def test_refresh_token_erro_banco_no_commit(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from sqlalchemy.exc import SQLAlchemyError
+
+    payload = {
+        "name": "teste",
+        "email": "erro.banco@teste.com",
+        "password": "teste123",
+    }
+
+    cadastro = client.post("/api/auth/register", json=payload)
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+
+    with patch.object(
+        db,
+        "commit",
+        side_effect=SQLAlchemyError("erro simulado"),
     ):
         response = client.post(
             "/api/auth/refresh",
