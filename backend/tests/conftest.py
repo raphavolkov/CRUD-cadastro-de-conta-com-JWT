@@ -1,47 +1,50 @@
 from collections.abc import Generator
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.limiter import limiter
 from app.main import app
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-TEST_DATABASE_URL = f"sqlite:///{(DATA_DIR / 'test_database.db').as_posix()}"
-
-test_engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
-
-TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-
 
 @pytest.fixture
 def db() -> Generator[Session]:
-    Base.metadata.drop_all(bind=test_engine)
-    Base.metadata.create_all(bind=test_engine)
+    test_engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
-    session = TestSessionLocal()
+    test_session_local = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=test_engine,
+    )
 
     try:
-        yield session
+        Base.metadata.create_all(bind=test_engine)
+        session = test_session_local()
+
+        try:
+            yield session
+        finally:
+            session.close()
+            Base.metadata.drop_all(bind=test_engine)
     finally:
-        session.close()
-        Base.metadata.drop_all(bind=test_engine)
+        test_engine.dispose()
 
 
 @pytest.fixture
 def client(db: Session) -> Generator[TestClient]:
     def override_get_db() -> Generator[Session]:
         yield db
+
+    previous_get_db_override = app.dependency_overrides.get(get_db)
+    limiter_enabled_original = limiter.enabled
 
     app.dependency_overrides[get_db] = override_get_db
     limiter.enabled = False
@@ -50,4 +53,9 @@ def client(db: Session) -> Generator[TestClient]:
         with TestClient(app) as test_client:
             yield test_client
     finally:
-        app.dependency_overrides.pop(get_db, None)
+        if previous_get_db_override is None:
+            app.dependency_overrides.pop(get_db, None)
+        else:
+            app.dependency_overrides[get_db] = previous_get_db_override
+
+        limiter.enabled = limiter_enabled_original
