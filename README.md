@@ -64,6 +64,7 @@ Projeto Login/
 │   │   │   ├── 573772928157_add_session_fields_and_active_session_.py
 │   │   │   ├── 6c82caf2057c_add_refresh_tokens_table.py
 │   │   │   ├── 814b28e6e84f_torna_expiracao_da_sessao_obrigatoria.py
+│   │   │   ├── ad373fe7fd17_corrige_restricoes_e_indice_de_usuarios.py
 │   │   │   └── dcb2d04744a5_initial_schema.py
 │   │   ├── README
 │   │   ├── env.py
@@ -133,15 +134,16 @@ Projeto Login/
 
 ### 1. Pré-requisitos
 
-- Python 3.14 ou versão compatível com as dependências.
+- Python 3.14.
 - Git.
-- Visual Studio Code.
-- Extensão Live Server para executar o frontend.
+- Navegador web moderno.
+
+**Opcional:** Visual Studio Code e extensão Live Server para facilitar a execução do frontend durante o desenvolvimento.
 
 ### 2. Clonar o repositório
 
 ```powershell
-git clone https://github.com/raphavolkov/CRUD-cadastro-de-conta-com-JWT
+git clone https://github.com/raphavolkov/CRUD-cadastro-de-conta-com-JWT.git
 cd CRUD-cadastro-de-conta-com-JWT
 ```
 
@@ -151,23 +153,19 @@ No Windows PowerShell:
 
 ```powershell
 cd backend
-
 python -m venv .venv
-
 .\.venv\Scripts\Activate.ps1
 ```
 
 ### 4. Instalar as dependências
 
-```powershell
-pip install -r requirements.txt
-```
-
-Para instalar as ferramentas de desenvolvimento e testes:
+Dentro da pasta `backend`, execute:
 
 ```powershell
-pip install pytest pytest-cov ruff
+pip install -r requirements-dev.txt
 ```
+
+Esse comando instala as dependências da aplicação e as ferramentas necessárias para desenvolvimento, testes e análise de código.
 
 ### 5. Configurar as variáveis de ambiente
 
@@ -204,15 +202,33 @@ Ainda dentro da pasta `backend`, execute:
 alembic upgrade head
 ```
 
+Esse comando aplica todas as migrations pendentes e atualiza a estrutura do banco de dados.
+
+Outros comandos úteis do Alembic:
+
+```powershell
+# Consultar a revisão atual do banco
+alembic current
+
+# Consultar o histórico de migrations
+alembic history
+
+# Criar uma nova migration
+alembic revision -m "descricao_da_migration"
+
+# Aplicar todas as migrations pendentes
+alembic upgrade head
+```
+
 O banco SQLite será utilizado em:
 
-```text
-backend/data/database.db
-```
+`backend/data/database.db`
 
 O diretório e o banco são criados automaticamente quando necessário.
 
 ### 7. Iniciar o backend
+
+Ainda dentro da pasta `backend`, execute:
 
 ```powershell
 uvicorn app.main:app --reload
@@ -220,7 +236,7 @@ uvicorn app.main:app --reload
 
 A API estará disponível em:
 
-http://127.0.0.1:8000
+[http://127.0.0.1:8000](http://127.0.0.1:8000)
 
 Documentação interativa:
 
@@ -229,17 +245,19 @@ Documentação interativa:
 
 ### 8. Iniciar o frontend
 
-Abra a raiz do projeto no Visual Studio Code.
+Uma opção para executar o frontend durante o desenvolvimento é utilizar o Visual Studio Code com a extensão Live Server.
 
-Utilize a extensão Live Server para executar o arquivo:
+Abra o arquivo:
 
-```text
-frontend/pages/index.html
-```
+`frontend/pages/index.html`
 
-O frontend é servido pelo Live Server em `http://127.0.0.1:5500` e utiliza a API disponível em `http://127.0.0.1:8000` para realizar as requisições HTTP.
+Com o Live Server, o frontend será servido em:
 
-**Observação:** a configuração atual de comunicação e CORS utiliza endereços locais de desenvolvimento. Caso altere a porta do Live Server, será necessário atualizar as configurações correspondentes.
+[http://127.0.0.1:5500](http://127.0.0.1:5500)
+
+O frontend utiliza a API disponível em [http://127.0.0.1:8000](http://127.0.0.1:8000) para realizar as requisições HTTP.
+
+**Observação:** o Live Server é uma ferramenta opcional de desenvolvimento. A configuração atual de comunicação e CORS utiliza endereços locais. Caso altere a porta do Live Server, será necessário atualizar as configurações correspondentes.
 
 ## Endpoints da API
 
@@ -332,7 +350,7 @@ Para verificar a qualidade do código:
 ruff check .
 ```
 
-**Resultado da última execução registrada:** 108 testes aprovados.
+**Resultado da última execução registrada:** 115 testes aprovados.
 
 ## Observações
 
