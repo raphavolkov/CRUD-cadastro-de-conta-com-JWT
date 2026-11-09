@@ -134,130 +134,182 @@ Projeto Login/
 
 ### 1. Pré-requisitos
 
-- Python 3.14.
-- Git.
-- Navegador web moderno.
+Antes de começar, instale:
 
-**Opcional:** Visual Studio Code e extensão Live Server para facilitar a execução do frontend durante o desenvolvimento.
+- **Python 3.14** — versão utilizada no desenvolvimento e nos testes do projeto.
+- **Git** — para clonar o repositório.
+- **Navegador moderno** — para acessar a aplicação.
+- **Visual Studio Code** (opcional) — com a extensão Live Server, caso prefira utilizá-la para servir o frontend.
+
+Confira a versão do Python:
+
+```bash
+python --version
+```
+
+No Linux e macOS, caso o comando `python` não esteja disponível:
+
+```bash
+python3.14 --version
+```
 
 ### 2. Clonar o repositório
 
-```powershell
+```bash
 git clone https://github.com/raphavolkov/CRUD-cadastro-de-conta-com-JWT.git
 cd CRUD-cadastro-de-conta-com-JWT
 ```
 
-### 3. Criar o ambiente virtual
+### 3. Criar e ativar o ambiente virtual
 
-No Windows PowerShell:
+A partir da raiz do projeto, entre no diretório do backend:
+
+```bash
+cd backend
+```
+
+**Windows (PowerShell):**
 
 ```powershell
-cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 4. Instalar as dependências
-
-Dentro da pasta `backend`, execute:
+Caso o PowerShell bloqueie a ativação do ambiente virtual, execute o comando abaixo na mesma janela e tente ativar novamente:
 
 ```powershell
-pip install -r requirements-dev.txt
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 ```
 
-Esse comando instala as dependências da aplicação e as ferramentas necessárias para desenvolvimento, testes e análise de código.
+Essa configuração vale somente para o processo atual do PowerShell.
+
+**Linux e macOS:**
+
+```bash
+python3.14 -m venv .venv
+source .venv/bin/activate
+```
+
+Após a ativação, o terminal deverá indicar que o ambiente virtual está ativo, normalmente exibindo `(.venv)`.
+
+### 4. Instalar as dependências
+
+Com o ambiente virtual ativo, execute:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
+```
+
+O arquivo `requirements-dev.txt` instala as dependências da aplicação e as ferramentas utilizadas no desenvolvimento e nos testes.
 
 ### 5. Configurar as variáveis de ambiente
 
-Crie um arquivo `.env` dentro da pasta `backend`, utilizando o `.env.example` como referência.
+Crie o arquivo `.env` a partir do modelo disponibilizado.
+
+**Windows (PowerShell):**
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-O arquivo deverá conter:
+**Linux e macOS:**
+
+```bash
+cp .env.example .env
+```
+
+Gere uma chave secreta com o Python:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Copie o valor gerado e substitua o conteúdo de `SECRET_KEY` no arquivo `.env`.
+
+Exemplo de configuração:
 
 ```dotenv
-SECRET_KEY=sua_chave_secreta
+SECRET_KEY=sua_chave_secreta_gerada_aqui
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
-Gere uma chave secreta forte utilizando:
+**Importante:** não utilize o valor de exemplo como chave secreta. A aplicação exige uma chave válida com pelo menos 32 caracteres. O arquivo `.env` contém informações sensíveis e não deve ser enviado ao repositório.
 
-```powershell
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
+### 6. Criar e atualizar o banco de dados
 
-Copie o valor gerado para a variável `SECRET_KEY`.
+Com o ambiente virtual ativo e ainda dentro do diretório `backend`, execute:
 
-**Importante:** nunca compartilhe ou versione o arquivo `.env` com credenciais reais.
-
-### 6. Executar as migrations
-
-Ainda dentro da pasta `backend`, execute:
-
-```powershell
+```bash
 alembic upgrade head
 ```
 
-Esse comando aplica todas as migrations pendentes e atualiza a estrutura do banco de dados.
+O comando aplica as migrações pendentes do Alembic e cria ou atualiza a estrutura do banco de dados.
 
 Outros comandos úteis do Alembic:
 
-```powershell
+```bash
 # Consultar a revisão atual do banco
 alembic current
 
-# Consultar o histórico de migrations
+# Consultar o histórico de migrações
 alembic history
 
-# Criar uma nova migration
+# Criar uma nova migração
 alembic revision -m "descricao_da_migration"
-
-# Aplicar todas as migrations pendentes
-alembic upgrade head
 ```
 
-O banco SQLite será utilizado em:
+O projeto utiliza SQLite. O arquivo do banco é armazenado em:
 
-`backend/data/database.db`
+```text
+backend/data/database.db
+```
 
-O diretório e o banco são criados automaticamente quando necessário.
+O diretório necessário é criado automaticamente quando a aplicação ou as migrações inicializam o banco de dados.
 
 ### 7. Iniciar o backend
 
-Ainda dentro da pasta `backend`, execute:
+Ainda no diretório `backend`, execute:
 
-```powershell
+```bash
 uvicorn app.main:app --reload
 ```
 
-A API estará disponível em:
+Por padrão, a API ficará disponível em:
 
-[http://127.0.0.1:8000](http://127.0.0.1:8000)
+- **API:** http://127.0.0.1:8000
+- **Documentação Swagger:** http://127.0.0.1:8000/docs
+- **Documentação ReDoc:** http://127.0.0.1:8000/redoc
 
-Documentação interativa:
-
-- [Swagger UI](http://127.0.0.1:8000/docs)
-- [ReDoc](http://127.0.0.1:8000/redoc)
+Mantenha esse terminal aberto enquanto estiver utilizando a aplicação.
 
 ### 8. Iniciar o frontend
 
-Uma opção para executar o frontend durante o desenvolvimento é utilizar o Visual Studio Code com a extensão Live Server.
+O frontend é composto por arquivos estáticos HTML, CSS e JavaScript. Não é necessário instalar Node.js ou utilizar npm.
 
-Abra o arquivo:
+Abra um **novo terminal na raiz do projeto** e execute:
 
-`frontend/pages/index.html`
+```bash
+python -m http.server 5500 --directory frontend
+```
 
-Com o Live Server, o frontend será servido em:
+Acesse a aplicação pelo navegador:
 
-[http://127.0.0.1:5500](http://127.0.0.1:5500)
+http://127.0.0.1:5500/pages/index.html
 
-O frontend utiliza a API disponível em [http://127.0.0.1:8000](http://127.0.0.1:8000) para realizar as requisições HTTP.
+Como alternativa, é possível utilizar a extensão Live Server do Visual Studio Code, desde que o frontend seja servido na porta `5500` e pela origem `http://127.0.0.1`.
 
-**Observação:** o Live Server é uma ferramenta opcional de desenvolvimento. A configuração atual de comunicação e CORS utiliza endereços locais. Caso altere a porta do Live Server, será necessário atualizar as configurações correspondentes.
+**Observação sobre CORS:** o backend está configurado para aceitar as origens `http://127.0.0.1:5500` e `http://localhost:5500`. Caso utilize outra origem ou porta, será necessário ajustar a configuração de CORS em `backend/app/main.py`. Se alterar o endereço da API, atualize também `API_BASE_URL` em `frontend/scripts/app.js`.
+
+### 9. Acessar a aplicação
+
+Com o backend e o frontend em execução, acesse:
+
+http://127.0.0.1:5500/pages/index.html
+
+A partir dessa página, será possível utilizar as funcionalidades de cadastro, autenticação e gerenciamento disponibilizadas pela aplicação.
 
 ## Endpoints da API
 
@@ -328,29 +380,27 @@ O projeto implementa diferentes mecanismos para proteger a autenticação e o ge
 
 O projeto utiliza Pytest para testar as funcionalidades e os mecanismos de segurança.
 
-Os testes utilizam um banco SQLite separado (`test_database.db`), evitando interferência no banco de desenvolvimento.
+Os testes utilizam um banco SQLite em memória, isolado por execução, evitando interferência no banco de desenvolvimento.
 
 Para executar os testes:
 
-```powershell
-pytest
+```bash
+pytest -q
 ```
 
 Para verificar a cobertura:
 
-```powershell
+```bash
 pytest --cov=app --cov-report=term-missing
 ```
 
-A cobertura atual dos testes é de 99% do código da aplicação.
-
 Para verificar a qualidade do código:
 
-```powershell
+```bash
 ruff check .
 ```
 
-**Resultado da última execução registrada:** 115 testes aprovados.
+**Resultado da última execução registrada:** 116 testes aprovados.
 
 ## Observações
 
