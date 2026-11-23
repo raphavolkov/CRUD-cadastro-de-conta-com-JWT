@@ -1338,9 +1338,6 @@ def test_refresh_token_sucesso(client: TestClient) -> None:
         "/api/auth/refresh", json={"refresh_token": refresh_token_original}
     )
 
-    print("STATUS:", response.status_code)
-    print("RESPOSTA:", response.text)
-
     assert response.status_code == 200
 
     dados = response.json()
@@ -1833,6 +1830,79 @@ def test_refresh_token_com_sessao_revogada(
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Sessão encerrada ou inválida"
+
+
+def test_refresh_token_com_datas_timezone_aware(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from datetime import UTC
+    from types import SimpleNamespace
+
+    from app.models import RefreshToken
+    from app.security import decode_refresh_token, hash_refresh_token
+
+    cadastro = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Teste",
+            "email": "refresh.timezone@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert cadastro.status_code == 201
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "refresh.timezone@email.com",
+            "password": "Senha123!",
+        },
+    )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+    _, session_id = decode_refresh_token(refresh_token)
+
+    stored_token = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.token_hash == hash_refresh_token(refresh_token))
+        .first()
+    )
+    assert stored_token is not None
+
+    active_session = (
+        db.query(AccessLog).filter(AccessLog.session_id == session_id).first()
+    )
+    assert active_session is not None
+
+    token_simulado = SimpleNamespace(
+        id=stored_token.id,
+        expires_at=stored_token.expires_at.replace(tzinfo=UTC),
+    )
+
+    sessao_simulada = SimpleNamespace(
+        expires_at=active_session.expires_at.replace(tzinfo=UTC),
+    )
+
+    with (
+        patch(
+            "app.services.auth_service.get_refresh_token",
+            return_value=token_simulado,
+        ),
+        patch(
+            "app.services.auth_service.get_active_session_by_id",
+            return_value=sessao_simulada,
+        ),
+    ):
+        response = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+    assert "refresh_token" in response.json()
 
 
 def test_decode_refresh_token_com_tipo_incorreto() -> None:

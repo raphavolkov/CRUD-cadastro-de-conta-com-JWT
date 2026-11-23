@@ -11,6 +11,7 @@ from app.security import (
     create_access_token,
     create_refresh_token,
     decode_access_token,
+    decode_refresh_token,
 )
 
 
@@ -165,8 +166,6 @@ def test_decode_refresh_token_sem_sub():
         algorithm=ALGORITHM,
     )
 
-    from app.security import decode_refresh_token
-
     with pytest.raises(ValueError, match="Refresh token"):
         decode_refresh_token(token)
 
@@ -182,10 +181,35 @@ def test_decode_refresh_token_sem_session_id():
         algorithm=ALGORITHM,
     )
 
-    from app.security import decode_refresh_token
-
     with pytest.raises(ValueError, match="Refresh token"):
         decode_refresh_token(token)
+
+
+def test_decode_refresh_token_valido():
+    token = create_refresh_token(
+        data={"sub": "usuario-teste", "session_id": "sessao-teste"}
+    )
+
+    user_id, session_id = decode_refresh_token(token)
+
+    assert user_id == "usuario-teste"
+    assert session_id == "sessao-teste"
+
+
+def test_decode_access_token_com_user_id_invalido():
+    token = jwt.encode(
+        {
+            "sub": 123,
+            "session_id": "sessao_test",
+            "type": "access",
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    with pytest.raises(ValueError, match="Token inválido ou expirado"):
+        decode_access_token(token)
 
 
 def test_decode_access_token_com_session_id_invalido():
@@ -228,3 +252,30 @@ def test_security_rejeita_algoritmo_invalido(monkeypatch: pytest.MonkeyPatch) ->
 
     with pytest.raises(RuntimeError, match="ALGORITHM inválido"):
         importlib.import_module("app.core.config")
+
+
+def test_decode_refresh_token_com_tipo_incorreto():
+    token = jwt.encode(
+        {
+            "sub": "usuario-teste",
+            "session_id": "sessao-teste",
+            "type": "access",
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    with pytest.raises(ValueError, match="Refresh token inválido ou expirado"):
+        decode_refresh_token(token)
+
+
+def test_decode_access_token_valido():
+    token = create_access_token(
+        data={"sub": "usuario-teste", "session_id": "sessao-teste"}
+    )
+
+    user_id, session_id = decode_access_token(token)
+
+    assert user_id == "usuario-teste"
+    assert session_id == "sessao-teste"
